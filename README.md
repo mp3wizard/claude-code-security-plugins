@@ -4,6 +4,8 @@ A Claude Code plugin that brings automated security scanning and comprehensive s
 
 It combines four industry-standard scanning tools with an AI-powered senior AppSec engineer agent that performs deep manual analysis across 12 vulnerability categories — producing actionable, dual-audience reports you can hand to both engineers and stakeholders.
 
+This material is a part of a 15-minute short talk at [Claude Code Thailand Meetup on March 15, 2026](https://www.facebook.com/photo?fbid=1600902880954303&set=gm.2182266732311295&idorvanity=1745892855948687). The link to the presentation slide is [here](https://1drv.ms/b/c/65172434bf16609a/IQAyXUe31nHqSpW0JIrVTDj5AZEbZw5RJ8TCYEUV-bdB_x0?e=KEEBpj).
+
 ## Components
 
 | Component | Type | Description |
