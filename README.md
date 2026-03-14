@@ -1,0 +1,106 @@
+# security-toolkit
+
+A Claude Code plugin that brings automated security scanning and comprehensive static security review to your development workflow.
+
+It combines four industry-standard scanning tools with an AI-powered senior AppSec engineer agent that performs deep manual analysis across 12 vulnerability categories — producing actionable, dual-audience reports you can hand to both engineers and stakeholders.
+
+## Components
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| `security-scanner` | Skill | Orchestrates Bandit, Semgrep, Trivy, and TruffleHog to produce a structured scan report |
+| `security-analysis` | Agent | Senior AppSec engineer that runs the scanner, then performs deep manual review across 12 vulnerability categories |
+
+## Prerequisites
+
+- **Claude Code** v1.0.33+
+- **Security tools** (the scanner will check for these and offer to install any that are missing):
+
+```bash
+# Python SAST
+pip install bandit
+
+# Multi-language SAST
+pip install semgrep
+
+# Dependency & IaC scanner
+brew install trivy
+
+# Secret detection
+brew install trufflehog
+```
+
+## Installation
+
+### Quick test (local directory)
+
+```bash
+claude --plugin-dir ./claude-code-security-plugins
+```
+
+### Permanent install
+
+```bash
+claude plugin install claude-code-security-plugins
+```
+
+## Usage
+
+### Run the automated scanner only
+
+```
+/claude-code-security-plugins:security-scanner
+```
+
+Runs all four tools against your codebase and produces a structured markdown report with findings, cross-tool observations, and coverage gaps.
+
+### Run a full security review
+
+Ask Claude naturally:
+
+```
+"Run a security review of this codebase"
+"We're preparing to deploy v2.0 — can you do a security review first?"
+"I just merged the auth branch, please review for vulnerabilities"
+```
+
+The `security-analysis` agent will automatically:
+1. Run the automated scanner (Phase 0)
+2. Perform codebase reconnaissance (Phase 1)
+3. Analyze 12 vulnerability categories with manual review (Phase 2)
+4. Document findings with structured fields (Phase 3)
+5. Produce a dual-audience report with executive summary and engineering findings (Phase 4)
+
+### Direct agent invocation
+
+Use `/agents` to see available agents and launch `claude-code-security-plugins:security-analysis` directly.
+
+## What gets scanned
+
+### Automated tools
+
+| Tool | Coverage |
+|------|----------|
+| Bandit | Python SAST — injection, pickle, subprocess, weak crypto |
+| Semgrep | Multi-language SAST — OWASP Top 10 + Python-specific rules |
+| Trivy | Dependencies, IaC misconfigs, secrets, container images |
+| TruffleHog | Secrets in git history with live API verification |
+
+### Manual review categories
+
+1. Injection Flaws
+2. Broken Access Control
+3. Hardcoded Secrets & Credential Exposure
+4. Cryptographic Misuse
+5. Insecure Deserialization
+6. Server-Side Request Forgery (SSRF)
+7. Dependency Vulnerabilities
+8. Authentication & Session Management
+9. Security Misconfiguration
+10. Logging & Monitoring Gaps
+11. Infrastructure-as-Code Risks
+12. CI/CD Pipeline Security
+
+## License
+
+MIT

@@ -1,0 +1,11 @@
+{
+  "name": "claude-code-security-plugins",
+  "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog) and comprehensive static security review agent for Claude Code",
+  "version": "1.0.0",
+  "author": {
+    "name": "pisek @ casedone"
+  },
+  "repository": "https://github.com/casedone/claude-code-security-plugins",
+  "license": "MIT",
+  "keywords": ["security", "sast", "vulnerability", "scanning", "appsec", "owasp"]
+}
