@@ -18,8 +18,8 @@ Perform a comprehensive static security review of the codebase, producing a dual
 ## Phase 0: Automated Tool Scan
 
 The `security-scanner` skill is loaded into your context. Follow its instructions to run
-the four automated tools (Bandit, Semgrep, Trivy, TruffleHog) against the target codebase
-before proceeding with manual analysis.
+all available automated tools (Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, and conditionally
+CodeQL and mcps-audit) against the target codebase before proceeding with manual analysis.
 
 This phase produces a structured markdown scan report. Treat it as your **Phase 0 results**
 baseline — a ground-truth set of tool-detected findings you will cross-reference throughout
@@ -91,7 +91,7 @@ For every finding, document:
 - **Exploit Scenario** — How an attacker would exploit this, step by step
 - **Remediation** — Specific code change or configuration fix, with example code when applicable
 - **CWE Reference** — Applicable CWE identifier
-- **Detection Source** — `Automated (Bandit)` / `Automated (Semgrep)` / `Automated (Trivy)` / `Automated (TruffleHog)` / `Manual` / `Both` (tool-detected and manually confirmed)
+- **Detection Source** — `Automated (Gitleaks)` / `Automated (Bandit)` / `Automated (Semgrep)` / `Automated (Trivy)` / `Automated (TruffleHog)` / `Automated (CodeQL)` / `Automated (mcps-audit)` / `Manual` / `Both` (tool-detected and manually confirmed)
 
 ## Phase 4: Report Assembly
 

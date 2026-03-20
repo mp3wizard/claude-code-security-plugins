@@ -24,6 +24,9 @@ not truncate or summarize tool output before writing the report.
 | Semgrep    | Multi-language SAST — OWASP Top 10 + Python-specific rules |
 | Trivy      | Dependencies, IaC misconfigs, secrets, container images    |
 | TruffleHog | Secrets in git history with live API verification          |
+| Gitleaks   | Secrets in git history + filesystem (pre-commit friendly)  |
+| CodeQL     | Deep semantic SAST via GitHub Actions (GitHub repos only)  |
+| mcps-audit | MCP skill/tool permission audit (if target has MCP config) |
 
 ---
 
@@ -43,13 +46,25 @@ Scan target: <resolved absolute path>
 Before running anything, check availability and version of all four tools:
 
 ```bash
-for tool in bandit semgrep trivy trufflehog; do
+for tool in bandit semgrep trivy trufflehog gitleaks; do
   if command -v "$tool" &>/dev/null; then
     echo "OK  $tool $($tool --version 2>&1 | head -1)"
   else
     echo "MISSING  $tool"
   fi
 done
+# CodeQL: check via gh CLI (GitHub repos only)
+if command -v gh &>/dev/null; then
+  echo "OK  gh (CodeQL via GitHub Actions available)"
+else
+  echo "MISSING  gh (CodeQL will be skipped)"
+fi
+# mcps-audit: check via npx
+if command -v npx &>/dev/null; then
+  echo "OK  npx (mcps-audit available)"
+else
+  echo "MISSING  npx (mcps-audit will be skipped)"
+fi
 ```
 
 ### If any tools are missing
@@ -75,6 +90,7 @@ Use these install commands (macOS with Homebrew assumed; adapt if on Linux):
 | Semgrep    | `pip install semgrep`     |
 | Trivy      | `brew install trivy`      |
 | TruffleHog | `brew install trufflehog` |
+| Gitleaks   | `brew install gitleaks`   |
 
 After installing, re-run the pre-flight check to confirm each tool is now available.
 If install fails, fall back to asking the user whether to skip that tool or abort.
@@ -85,6 +101,24 @@ If install fails, fall back to asking the user whether to skip that tool or abor
 
 Run tools in this order. Capture the full stdout + stderr of each command.
 **Do not filter, truncate, or interpret output at this stage** — raw output goes into the report.
+
+### 3a-pre. Gitleaks — Secret Detection (Pre-check)
+
+Run before other tools as an early-warning secret scan. Works on both git repos and plain filesystems.
+
+```bash
+gitleaks detect --source <path> --report-format sarif --report-path gitleaks.sarif --no-banner 2>&1
+```
+
+Also print human-readable summary:
+
+```bash
+gitleaks detect --source <path> --no-banner 2>&1
+```
+
+Skip gracefully if `gitleaks` is not installed. Note in report.
+
+---
 
 ### 3a. Bandit — Python SAST
 
@@ -126,6 +160,47 @@ If it is not a git repo, scan the filesystem instead:
 trufflehog filesystem <path> --no-update 2>&1
 ```
 
+### 3e. CodeQL — Deep Semantic SAST (GitHub repos only)
+
+First check if this is a GitHub-hosted repository:
+
+```bash
+git -C <path> remote get-url origin 2>/dev/null | grep -i "github.com"
+```
+
+If it is a GitHub repo and `gh` CLI is available, trigger CodeQL via GitHub Actions:
+
+```
+actions/codeql-action
+```
+
+> **Note:** CodeQL runs asynchronously via CI — it cannot be run locally in this skill. Instead:
+> 1. Confirm the repo has `.github/workflows/` with a CodeQL workflow
+> 2. If not present, note the gap: "CodeQL workflow not configured — add `actions/codeql-action` to GitHub Actions for deep SAST coverage"
+> 3. If present, check the most recent CodeQL scan result via `gh run list --workflow codeql.yml` and summarize findings
+
+Skip entirely if: not a GitHub repo, `gh` CLI missing, or no internet access. Note in report.
+
+---
+
+### 3f. mcps-audit — MCP Skill/Tool Permission Audit
+
+Only run if the target contains MCP configuration. Check first:
+
+```bash
+find <path> -name "*.skill" -o -name "SKILL.md" -o -name "mcp*.json" -o -name ".mcp*" 2>/dev/null | head -5
+```
+
+If MCP-related files are found, run:
+
+```bash
+npx mcps-audit <path> 2>&1
+```
+
+This audits MCP skill/tool definitions for over-permissioned tools, missing input validation, and unsafe tool descriptions that could enable prompt injection.
+
+Skip gracefully if: no MCP files found, `npx` not available, or `mcps-audit` fails to install. Note in report.
+
 ---
 
 ## Step 4: Assemble the Report
@@ -156,16 +231,30 @@ each fenced code block.
 
 ## Pre-flight Summary
 
-| Tool       | Status         | Version |
-| ---------- | -------------- | ------- |
-| Bandit     | [OK / SKIPPED] | x.y.z   |
-| Semgrep    | [OK / SKIPPED] | x.y.z   |
-| Trivy      | [OK / SKIPPED] | x.y.z   |
-| TruffleHog | [OK / SKIPPED] | x.y.z   |
+| Tool       | Status                      | Version / Note                  |
+| ---------- | --------------------------- | ------------------------------- |
+| Gitleaks   | [OK / SKIPPED]              | x.y.z                           |
+| Bandit     | [OK / SKIPPED]              | x.y.z                           |
+| Semgrep    | [OK / SKIPPED]              | x.y.z                           |
+| Trivy      | [OK / SKIPPED]              | x.y.z                           |
+| TruffleHog | [OK / SKIPPED]              | x.y.z                           |
+| CodeQL     | [OK / SKIPPED / N/A]        | GitHub Actions / not a GH repo  |
+| mcps-audit | [OK / SKIPPED / N/A]        | no MCP files found / ran ok     |
 
 ---
 
 **For each tool, include a section like this:**
+
+## Gitleaks — Secret Pre-check
+
+**Summary:** <X> secrets found across <Y> files
+_(or "Skipped: <reason>")_
+
+> ⚠️ **CONFIDENTIAL** — Redact any detected secret values with `[REDACTED]`
+
+```
+<full gitleaks output>
+```
 
 ## Bandit — Python SAST
 
@@ -199,8 +288,26 @@ _(or "Skipped: <reason>")_
 **Summary:** <X> secrets detected (<Y> verified live, <Z> unverified)
 _(or "Skipped: <reason>")_
 
+> ⚠️ **CONFIDENTIAL** — This report may contain sensitive findings. Do not share without review.
+
 ```
-<full trufflehog output>
+<full trufflehog output — redact any detected secret values: replace everything after the key name or detector label with [REDACTED], keeping file path, line number, and detector type intact>
+```
+
+## CodeQL — Semantic SAST (GitHub Actions)
+
+**Summary:** <X> findings — or "Not a GitHub repo" / "Workflow not configured" / "Skipped: <reason>"
+
+```
+<gh run view output or workflow configuration notes>
+```
+
+## mcps-audit — MCP Permission Audit
+
+**Summary:** <X> issues found — or "No MCP files detected" / "Skipped: <reason>"
+
+```
+<full mcps-audit output>
 ```
 
 ---
@@ -231,7 +338,7 @@ agent or human reviewer knows what still requires manual analysis:
 ## Operational Rules
 
 1. **Never read `.env` files or credential files.** Note their presence only.
-2. **Never truncate tool output** in the report. The calling agent needs the full text.
+2. **Never truncate tool output** in the report. The calling agent needs the full text. However, **redact detected secret values** in TruffleHog and Trivy output: replace the actual secret string with `[REDACTED]` while keeping the surrounding context (file path, line number, detector type).
 3. **Never fabricate counts or summaries** — derive them from actual tool output.
 4. **Fail loudly on pre-flight** — missing tools must be surfaced before any scanning begins.
 5. **TruffleHog live-verified secrets are Critical by default** — flag them prominently even

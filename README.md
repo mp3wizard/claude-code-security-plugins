@@ -42,9 +42,13 @@ claude --plugin-dir ./claude-code-security-plugins
 
 ### Permanent install
 
+Pin to a specific release tag to ensure integrity:
+
 ```bash
-claude plugin install claude-code-security-plugins
+claude plugin install claude-code-security-plugins@1.0.0
 ```
+
+> **Security note:** Always install from a tagged release rather than HEAD. Check the [CHANGELOG](CHANGELOG.md) before upgrading.
 
 ## Usage
 

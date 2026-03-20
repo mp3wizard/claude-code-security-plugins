@@ -1,0 +1,7 @@
+# All changes to agent and skill definitions require review by the repository owner.
+# This protects the plugin's instruction files from unauthorized modifications
+# that could affect all users who have installed the plugin.
+
+agents/    @casedone
+skills/    @casedone
+.claude-plugin/    @casedone
