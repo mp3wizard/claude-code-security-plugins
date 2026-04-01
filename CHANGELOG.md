@@ -6,8 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `security-scanner` skill — optimized prompt: condensed from 348 to 145 lines; same 7-tool coverage, tighter bash examples, shorter install table, compact report template
-- `security-analysis` agent — optimized prompt: condensed from 142 to 112 lines; concise persona, shortened phase descriptions, compact vulnerability category one-liners, simplified detection source field, condensed severity framework and memory section
+Prompt optimization pass on both skill and agent — same coverage and functionality, significantly fewer tokens.
+
+| File | Before | After | Reduction |
+|------|--------|-------|-----------|
+| `skills/security-scanner/SKILL.md` | 348 lines | 145 lines | −58% |
+| `agents/security-analysis.md` | 142 lines | 112 lines | −21% |
+
+**security-scanner:** Condensed pre-flight bash block, install instructions, step headers, and report template. All 7 tools and 4-step workflow preserved.
+
+**security-analysis:** Concise persona, tighter phase descriptions, compact vulnerability category one-liners, simplified detection source field (`Automated (<tool>) / Manual / Both`), condensed severity definitions, shorter memory section.
 
 ## [1.0.0] - 2026-03-13
 

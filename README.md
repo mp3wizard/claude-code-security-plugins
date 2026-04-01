@@ -117,6 +117,39 @@ Use `/agents` to see available agents and launch `claude-code-security-plugins:s
 11. Infrastructure-as-Code Risks
 12. CI/CD Pipeline Security
 
+## Prompt Optimization
+
+v1.1.0 applied a prompt optimization pass to both the skill and agent — reducing token count while preserving all functionality.
+
+### Line count
+
+| File | v1.0.0 | v1.1.0 | Reduction |
+|------|--------|--------|-----------|
+| `skills/security-scanner/SKILL.md` | 348 lines | 145 lines | −203 (−58%) |
+| `agents/security-analysis.md` | 142 lines | 112 lines | −30 (−21%) |
+
+### security-scanner/SKILL.md — section changes
+
+| Section | Before | After |
+|---------|--------|-------|
+| Pre-flight bash block | Verbose if/else block (18 lines) | Single for-loop (7 lines) |
+| Missing tools prompt | Multi-line prose quote block | One-liner ask |
+| Install instructions | Expanded table + explanations | Compact inline note |
+| Step headers | `---` separators + prose | Inline bold labels |
+| Report template | Repeated "insert output here" prose | Single compact template |
+
+### agents/security-analysis.md — section changes
+
+| Section | Before | After |
+|---------|--------|-------|
+| Persona | 2-sentence verbose intro | 1-sentence summary |
+| Phase 0 | 4 sentences + redundant explanation | 1 sentence |
+| Phase 1 labels | "Framework & Stack Identification" etc. | "Stack", "Entry Points" etc. |
+| Vulnerability categories | Long comma lists with "Look for…" | Tight 1-liners |
+| Detection Source field | 9-item enumerated list | `Automated (<tool>) / Manual / Both` |
+| Severity definitions | Full prose per level | Compact bullet per level |
+| Memory section | 10 lines with examples | 2-line summary |
+
 ## License
 
 MIT
