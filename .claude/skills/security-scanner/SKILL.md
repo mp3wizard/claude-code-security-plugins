@@ -60,14 +60,22 @@ gitleaks detect --source <path> --no-banner 2>&1
 bandit -r <path> -f txt 2>&1
 ```
 
-**3b. Semgrep:**
+**3b. Semgrep** — run each config separately to prevent OOM:
 ```bash
 semgrep scan --metrics=off --disable-version-check \
-  --config p/python --config p/owasp-top-ten \
-  --max-memory 2000 --jobs 1 --timeout 30 --timeout-threshold 3 \
-  --max-target-bytes 500000 <path> 2>&1
+  --config p/owasp-top-ten \
+  --max-memory 1500 --jobs 1 --timeout 20 --timeout-threshold 2 \
+  --max-target-bytes 300000 --include "*.py" --include "*.js" --include "*.ts" --include "*.jsx" --include "*.tsx" --include "*.java" --include "*.go" --include "*.rb" <path> 2>&1
 ```
-_(2 GB cap/worker; single job prevents OOM; 30s/rule timeout; skip files >500 KB or after 3 timeouts)_
+If the above succeeds and Python files exist, run additionally:
+```bash
+semgrep scan --metrics=off --disable-version-check \
+  --config p/python \
+  --max-memory 1500 --jobs 1 --timeout 20 --timeout-threshold 2 \
+  --max-target-bytes 300000 --include "*.py" <path> 2>&1
+```
+If Semgrep exits with code 137 (OOM-killed), note in the report: "Semgrep OOM — Bandit covers Python SAST; re-run on a machine with more RAM for full multi-language coverage."
+_(1.5 GB cap; single job; split configs to halve peak memory; skip non-code and files >300 KB)_
 
 **3c. Trivy:**
 ```bash
