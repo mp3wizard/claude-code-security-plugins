@@ -1,0 +1,21 @@
+{
+  "name": "claude-code-security-plugins",
+  "metadata": {
+    "description": "Automated security scanning and comprehensive static security review for Claude Code. Combines 7 tools (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit) with a senior AppSec agent covering 12 vulnerability categories."
+  },
+  "owner": {
+    "name": "pisek @ casedone"
+  },
+  "plugins": [
+    {
+      "name": "claude-code-security-plugins",
+      "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit) and comprehensive static security review agent for Claude Code",
+      "version": "1.1.0",
+      "author": { "name": "pisek @ casedone" },
+      "source": "./",
+      "category": "security",
+      "homepage": "https://github.com/casedone/claude-code-security-plugins",
+      "tags": ["security", "sast", "vulnerability", "scanning", "appsec", "owasp", "secrets"]
+    }
+  ]
+}

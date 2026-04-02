@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-04-02
+
+### Changed
+
+Restructured repository to proper Claude Code plugin layout for marketplace distribution. No functional changes to skill or agent content.
+
+- Moved `skills/security-scanner/SKILL.md` → `.claude/skills/security-scanner/SKILL.md`
+- Moved `agents/security-analysis.md` → `.claude/agents/security-analysis.md`
+- Removed `.claude/` from `.gitignore` so skill/agent files are distributed with the plugin
+- Updated `plugin.json`: synced version to 1.1.0, added `skills` array pointing to `.claude/skills/security-scanner`
+- Added `.claude-plugin/marketplace.json` for marketplace distribution
+- Updated `CODEOWNERS` to reference new canonical paths
+
 ## [1.1.0] - 2026-04-01
 
 ### Changed

@@ -2,6 +2,6 @@
 # This protects the plugin's instruction files from unauthorized modifications
 # that could affect all users who have installed the plugin.
 
-agents/    @casedone
-skills/    @casedone
+.claude/agents/    @casedone
+.claude/skills/    @casedone
 .claude-plugin/    @casedone

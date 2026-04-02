@@ -41,18 +41,40 @@ brew install gitleaks
 
 ## Installation
 
-### Quick test (local directory)
+### Option 1 — ZIP file (skill + agent, recommended)
+
+Download `claude-code-security-plugins.zip` from the [Releases](https://github.com/mp3wizard/claude-code-security-plugins/releases) page, then:
 
 ```bash
+# Extract
+unzip claude-code-security-plugins.zip
+
+# Quick test (one-time session)
 claude --plugin-dir ./claude-code-security-plugins
+
+# Permanent install
+claude plugin install ./claude-code-security-plugins
 ```
 
-### Permanent install
+This bundles the `security-scanner` skill and `security-analysis` agent together in one file.
+
+### Option 2 — Skill only (.skill file)
+
+Download `security-scanner.skill` from the [Releases](https://github.com/mp3wizard/claude-code-security-plugins/releases) page, then:
+
+```bash
+# Install directly
+claude plugin install ./security-scanner.skill
+```
+
+Use this if you only need the automated scanner without the agent.
+
+### Option 3 — Install from GitHub
 
 Pin to a specific release tag to ensure integrity:
 
 ```bash
-claude plugin install claude-code-security-plugins@1.0.0
+claude plugin install claude-code-security-plugins@1.1.0
 ```
 
 > **Security note:** Always install from a tagged release rather than HEAD. Check the [CHANGELOG](CHANGELOG.md) before upgrading.
@@ -125,10 +147,10 @@ v1.1.0 applied a prompt optimization pass to both the skill and agent — reduci
 
 | File | v1.0.0 | v1.1.0 | Reduction |
 |------|--------|--------|-----------|
-| `skills/security-scanner/SKILL.md` | 348 lines | 145 lines | −203 (−58%) |
-| `agents/security-analysis.md` | 142 lines | 112 lines | −30 (−21%) |
+| `.claude/skills/security-scanner/SKILL.md` | 348 lines | 145 lines | −203 (−58%) |
+| `.claude/agents/security-analysis.md` | 142 lines | 112 lines | −30 (−21%) |
 
-### security-scanner/SKILL.md — section changes
+### .claude/skills/security-scanner/SKILL.md — section changes
 
 | Section | Before | After |
 |---------|--------|-------|
@@ -138,7 +160,7 @@ v1.1.0 applied a prompt optimization pass to both the skill and agent — reduci
 | Step headers | `---` separators + prose | Inline bold labels |
 | Report template | Repeated "insert output here" prose | Single compact template |
 
-### agents/security-analysis.md — section changes
+### .claude/agents/security-analysis.md — section changes
 
 | Section | Before | After |
 |---------|--------|-------|

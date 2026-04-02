@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"/Users/mp3wizard/Public/Claude Code Security Check\" rev-parse --git-dir)",
+      "Bash(git -C \"/Users/mp3wizard/Public/Claude Code Security Check\" log --oneline --all)",
+      "Bash(git -C \"/Users/mp3wizard/Public/Claude Code Security Check\" log --all --full-history --name-only --format=\"%H %s\")",
+      "Bash(git -C \"/Users/mp3wizard/Public/Claude Code Security Check\" show f4e6f58f79c79b7d8927e504a047ee0df5ca90a2)",
+      "Bash(git -C \"/Users/mp3wizard/Public/Claude Code Security Check\" diff HEAD~2 HEAD --stat)",
+      "Bash(/opt/homebrew/bin/brew --version)",
+      "Bash(/usr/local/bin/brew --version)",
+      "Bash(/opt/homebrew/bin/brew install bandit)",
+      "Bash(/opt/homebrew/bin/brew install semgrep)",
+      "Bash(/opt/homebrew/bin/brew install trivy)",
+      "Bash(/opt/homebrew/bin/brew install trufflehog)",
+      "Bash(/Users/mp3wizard/Library/Python/3.9/bin/bandit --version)",
+      "Bash(/Users/mp3wizard/Library/Python/3.9/bin/semgrep --version)",
+      "Bash(/opt/homebrew/bin/trivy --version)",
+      "Bash(/opt/homebrew/bin/trufflehog --version)",
+      "Bash(PATH=\"/Users/mp3wizard/Library/Python/3.9/bin:$PATH\" semgrep --version)",
+      "Bash(export PATH=\"/Users/mp3wizard/Library/Python/3.9/bin:/opt/homebrew/bin:$PATH\")",
+      "Bash(git -C \"/Users/mp3wizard/Public/Claude Code Security Check\" remote -v)",
+      "Bash(bandit --version)",
+      "Bash(semgrep --version)",
+      "Read(//Users/mp3wizard/.claude/skills/**)",
+      "Read(//Users/mp3wizard/.claude/plugins/**)",
+      "Bash(mkdir -p ~/.claude/agents)",
+      "Bash(cp \"/Users/mp3wizard/Public/Claude Code Security Check/skills/security-scanner/SKILL.md\" ~/.claude/skills/security-scanner/SKILL.md)",
+      "Bash(cp \"/Users/mp3wizard/Public/Claude Code Security Check/agents/security-analysis.md\" ~/.claude/agents/security-analysis.md)"
+    ]
+  }
+}
