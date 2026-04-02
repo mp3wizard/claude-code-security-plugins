@@ -62,8 +62,11 @@ This bundles the `security-scanner` skill and `security-analysis` agent together
 
 Download `security-scanner.skill` from the [Releases](https://github.com/mp3wizard/claude-code-security-plugins/releases) page, then:
 
+**Double-click** `security-scanner.skill` — Claude Code will install it automatically.
+
+Or via terminal:
+
 ```bash
-# Install directly
 claude plugin install ./security-scanner.skill
 ```
 
