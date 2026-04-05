@@ -49,7 +49,7 @@ Systematically analyze all 12 categories — do not skip any. Cross-check Phase 
 
 6. **SSRF** — User-controlled URLs to HTTP clients, unrestricted redirects, DNS rebinding, cloud metadata endpoint access.
 
-7. **Dependency Vulnerabilities** — Outdated packages with known CVEs, unpinned deps, deprecated/unmaintained libraries.
+7. **Dependency Vulnerabilities** — Outdated packages with known CVEs (cross-check OSV-Scanner output), unpinned deps, deprecated/unmaintained libraries.
 
 8. **Authentication & Session Management** — Weak passwords, missing MFA, insecure session storage, JWT misconfigs (algorithm confusion, missing expiry, weak secrets), token leakage.
 

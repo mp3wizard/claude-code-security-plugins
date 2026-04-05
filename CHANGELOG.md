@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-04-05
+
+### Added
+
+- **OSV-Scanner** (Google) — SCA/dependency vulnerability scanning via OSV.dev database. Scans source directories and lockfiles. Open-source, no telemetry, no API limits.
+- **mcp-scan** (Invariant Labs) — [OPT-IN] Detects prompt injection, tool poisoning, MCP rug pulls, cross-origin escalation, tool shadowing. Sends data to invariantlabs.ai — always asks user before running.
+- **Semgrep `p/typescript`** — TypeScript-specific rules for projects with `.ts`/`.tsx` files
+- **Semgrep `p/secrets`** — Lightweight secret pattern matching, runs on all projects
+- **Trivy supply chain warning** — Pre-flight warns if Trivy v0.69.4–v0.69.6 detected (compromised versions, GHSA-69fq-xp46-6x23)
+
+### Changed
+
+- Pre-flight tool check now includes `osv-scanner` and `uvx` (for mcp-scan)
+- Semgrep uses `$SG` variable for common flags — 4 configs (OWASP, Python, TypeScript, secrets) instead of 2
+- Tools: 7 → 9
+- security-analysis agent Category 7 cross-references OSV-Scanner output
+
+### Optimized
+
+- Frontmatter description tightened (~70→38 words)
+- Removed duplicated prose (Step 3 intro redundant with Operational Rule #2)
+- Report template compacted (generation instruction replaces literal table rows)
+- Semgrep `$SG` variable eliminates repeated flags across 4 configs
+- Net token reduction (~-5%) despite adding 2 new tools and 2 new Semgrep configs
+
 ## [1.2.0] - 2026-04-02
 
 ### Changed
