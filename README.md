@@ -2,7 +2,7 @@
 
 A Claude Code plugin that brings automated security scanning and comprehensive static security review to your development workflow.
 
-It combines nine industry-standard scanning tools with an AI-powered senior AppSec engineer agent that performs deep manual analysis across 12 vulnerability categories — producing actionable, dual-audience reports you can hand to both engineers and stakeholders.
+It combines **11 scanning tools** with an AI-powered senior AppSec engineer agent that performs deep manual analysis across 12 vulnerability categories — producing actionable, dual-audience reports you can hand to both engineers and stakeholders.
 
 This material is a part of a 15-minute short talk at [Claude Code Thailand Meetup on March 15, 2026](https://www.facebook.com/photo?fbid=1600902880954303&set=gm.2182266732311295&idorvanity=1745892855948687). The link to the presentation slide is [here](https://1drv.ms/b/c/65172434bf16609a/IQAyXUe31nHqSpW0JIrVTDj5AZEbZw5RJ8TCYEUV-bdB_x0?e=KEEBpj).
 
@@ -48,7 +48,9 @@ brew install osv-scanner
 
 ## Installation
 
-### Option 1 — ZIP file (skill + agent, recommended)
+> **What's bundled:** `security-audit` and `skill-security-auditor` scripts are packed inside both distribution files — no extra `git clone` required.
+
+### Option 1 — Plugin ZIP (skill + agent, recommended)
 
 Download `claude-code-security-plugins.zip` from the [Releases](https://github.com/mp3wizard/claude-code-security-plugins/releases) page, then:
 
@@ -56,14 +58,30 @@ Download `claude-code-security-plugins.zip` from the [Releases](https://github.c
 # Extract
 unzip claude-code-security-plugins.zip
 
-# Quick test (one-time session)
+# Quick test — one-time session, no permanent install
 claude --plugin-dir ./claude-code-security-plugins
 
 # Permanent install
 claude plugin install ./claude-code-security-plugins
 ```
 
-This bundles the `security-scanner` skill and `security-analysis` agent together in one file.
+Includes: `security-scanner` skill + `security-analysis` agent + bundled audit scripts (`scripts/config-audit.py`, `scripts/skill-audit.sh`).
+
+**Plugin structure inside ZIP:**
+```
+claude-code-security-plugins/
+├── .claude/
+│   ├── skills/security-scanner/
+│   │   ├── SKILL.md
+│   │   ├── scripts/
+│   │   │   ├── config-audit.py   # Claude config audit (bundled)
+│   │   │   └── skill-audit.sh    # Skill/MCP deep analysis (bundled)
+│   │   └── reports/
+│   └── agents/security-analysis.md
+└── .claude-plugin/
+    ├── plugin.json
+    └── marketplace.json
+```
 
 ### Option 2 — Skill only (.skill file)
 
@@ -77,14 +95,14 @@ Or via terminal:
 claude plugin install ./security-scanner.skill
 ```
 
-Use this if you only need the automated scanner without the agent.
+Includes bundled audit scripts. Does **not** include the `security-analysis` agent.
 
 ### Option 3 — Install from GitHub
 
 Pin to a specific release tag to ensure integrity:
 
 ```bash
-claude plugin install claude-code-security-plugins@1.3.0
+claude plugin install claude-code-security-plugins@1.4.0
 ```
 
 > **Security note:** Always install from a tagged release rather than HEAD. Check the [CHANGELOG](CHANGELOG.md) before upgrading.
