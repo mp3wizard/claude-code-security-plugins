@@ -1,9 +1,10 @@
 ---
 name: security-scanner
 description: >
-  Run security scanning tools (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, OSV-Scanner, mcp-scan)
-  against a codebase and return structured markdown findings. Trigger on: security scan, vulnerability check,
-  secrets scan, dependency audit, SAST analysis, or when the security-analysis agent needs automated findings.
+  Run security scanning tools (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, OSV-Scanner, mcp-scan,
+  security-audit, skill-security-auditor) against a codebase and return structured markdown findings.
+  Trigger on: security scan, vulnerability check, secrets scan, dependency audit, SAST analysis,
+  Claude config audit, skill security check, or when the security-analysis agent needs automated findings.
 ---
 
 # Security Scanner
@@ -23,6 +24,8 @@ Runs automated security tools against a target path and assembles a structured m
 | mcps-audit | MCP skill/tool permission audit |
 | OSV-Scanner | SCA — dependency vulnerabilities via OSV.dev |
 | mcp-scan | [OPT-IN] MCP tool poisoning, prompt injection, rug pulls (→ invariantlabs.ai API) |
+| security-audit | Claude Config Audit — hooks, MCP servers, skills, CLAUDE.md safety checks |
+| skill-security-auditor | Skill/MCP deep analysis — prompt injection, allowed-tools risk, supply chain, risk scoring |
 
 ## Step 1: Scan Target
 
@@ -37,6 +40,9 @@ done
 command -v gh &>/dev/null && echo "OK  gh (CodeQL available)" || echo "MISSING  gh"
 command -v npx &>/dev/null && echo "OK  npx (mcps-audit available)" || echo "MISSING  npx"
 command -v uvx &>/dev/null && echo "OK  uvx (mcp-scan available — opt-in only)" || echo "MISSING  uvx (mcp-scan — optional, opt-in)"
+SKILL_DIR="$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")"
+[ -f "$SKILL_DIR/scripts/config-audit.py" ] && echo "OK  config-audit (Claude config audit — bundled)" || echo "MISSING  config-audit.py (bundled script not found)"
+[ -f "$SKILL_DIR/scripts/skill-audit.sh" ] && echo "OK  skill-audit (skill/MCP deep analysis — bundled)" || echo "MISSING  skill-audit.sh (bundled script not found)"
 ```
 
 **Trivy supply chain check** — run after pre-flight loop:
@@ -137,6 +143,22 @@ Local-only inspection (no API call):
 uvx mcp-scan@latest inspect 2>&1
 ```
 
+**3i. security-audit** — Claude Code configuration audit:
+Bundled at `<skill-directory>/scripts/config-audit.py`.
+```bash
+python3 <skill-directory>/scripts/config-audit.py <path> 2>&1
+```
+Scans: global `~/.claude/settings.json` hooks, MCP servers, installed skills/plugins for hidden commands, project-level `.claude/` configs, and `CLAUDE.md` for safety-bypass instructions. Outputs findings with severity (CRITICAL/HIGH/MEDIUM/LOW).
+
+**3j. skill-security-auditor** — Skill & MCP deep analysis:
+Bundled at `<skill-directory>/scripts/skill-audit.sh`. Scan all `.skill` and `SKILL.md` files found in target:
+```bash
+find <path> -name "*.skill" -o -name "SKILL.md" 2>/dev/null | while read f; do
+  bash <skill-directory>/scripts/skill-audit.sh "$f" 2>&1
+done
+```
+Checks: prompt injection patterns, allowed-tools risk matrix, tool combination risks (Read+WebFetch, Bash+WebFetch), supply chain attacks (postinstall, typosquatting), MCP-specific vectors (SSRF, path traversal, OAuth scope), and source verification via `gh` CLI. Outputs risk score 0–100 per file.
+
 ## Step 4: Assemble Report
 
 Extract counts from each tool's output, then write in one pass:
@@ -164,9 +186,11 @@ End with:
 ```
 ## Cross-Tool Observations
 Issues flagged by multiple tools (higher-confidence signals), or "No cross-tool overlaps detected."
+Include correlations between security-audit config findings and skill-security-auditor risk scores when both ran.
 
 ## Coverage Gaps
 Categories not covered by tools that ran: business logic, IDOR, skipped-tool gaps, runtime behavior.
+If config-audit.py or skill-audit.sh failed, note: "Claude config/skill audit incomplete — check bundled scripts."
 ```
 
 ## Operational Rules

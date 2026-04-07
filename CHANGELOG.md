@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-04-07
+
+### Added
+
+- **security-audit** *(bundled)* — Claude Code configuration audit bundled directly inside the `.skill` file at `scripts/config-audit.py`. Scans global `~/.claude/settings.json` hooks, MCP servers, installed skills/plugins for hidden commands, project-level `.claude/` configs, and `CLAUDE.md` for safety-bypass instructions. Outputs CRITICAL/HIGH/MEDIUM/LOW findings.
+- **skill-security-auditor** *(bundled)* — Skill/MCP deep security analysis bundled at `scripts/skill-audit.sh`. Runs against every `.skill` and `SKILL.md` found in the scan target. Checks: prompt injection patterns (10 patterns), allowed-tools risk matrix, high-risk tool combinations (Read+WebFetch, Bash+WebFetch), supply chain attacks (postinstall scripts, typosquatting, dependency confusion), MCP-specific vectors (SSRF, path traversal, excessive OAuth scope, env leakage). Produces risk score 0–100 per file with APPROVE / APPROVE WITH CHANGES / REJECT verdict.
+- `scripts/` directory inside `.skill` ZIP — stores both bundled scripts
+- `reports/` directory inside `.skill` ZIP — stores skill-audit output reports
+
+### Changed
+
+- `security-scanner.skill` is now fully self-contained (14 KB). No separate installation of external security-audit or skill-security-auditor repos required.
+- Pre-flight check uses `<skill-directory>/scripts/` relative path for bundled tools — no hardcoded `~/.claude/skills/` references
+- Tools count: 9 → **11**
+- Frontmatter description updated to include new tools and trigger keywords (`Claude config audit`, `skill security check`)
+- README: automated tools table updated, optional tools section updated, version history table extended to v1.4.0
+
 ## [1.3.0] - 2026-04-05
 
 ### Added

@@ -10,7 +10,7 @@ This material is a part of a 15-minute short talk at [Claude Code Thailand Meetu
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `security-scanner` | Skill | Orchestrates Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, CodeQL (GitHub repos), mcps-audit (MCP projects), OSV-Scanner (SCA), and mcp-scan (opt-in MCP security) to produce a structured scan report |
+| `security-scanner` | Skill | Orchestrates Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, CodeQL (GitHub repos), mcps-audit (MCP projects), OSV-Scanner (SCA), mcp-scan (opt-in MCP security), security-audit (Claude config audit), and skill-security-auditor (skill/MCP deep analysis) to produce a structured scan report |
 | `security-analysis` | Agent | Senior AppSec engineer that runs the scanner, then performs deep manual review across 12 vulnerability categories |
 
 ## Prerequisites
@@ -44,6 +44,7 @@ brew install osv-scanner
   - **CodeQL** — GitHub repos only. Requires [`gh` CLI](https://cli.github.com/) authenticated and a CodeQL workflow in `.github/workflows/`
   - **mcps-audit** — MCP projects only. Requires `npx` (`npm install -g npx`)
   - **mcp-scan** — MCP security analysis. Requires `uvx` (`pip install uv` or `brew install uv`). **Opt-in only** — sends data to invariantlabs.ai API. Scanner always asks before running.
+  - **security-audit** and **skill-security-auditor** — **bundled inside the `.skill` file**. No separate installation required.
 
 ## Installation
 
@@ -126,7 +127,7 @@ Use `/agents` to see available agents and launch `claude-code-security-plugins:s
 | Tool | Coverage | Condition |
 |------|----------|-----------|
 | Gitleaks | Secrets in git history + filesystem, SARIF output | Always run (pre-check) |
-| Bandit | Python SAST — injection, pickle, subprocess, weak crypto | Python files present |
+| Bandit | Python SAST — injection, unsafe deserialization, subprocess, weak crypto | Python files present |
 | Semgrep | Multi-language SAST — OWASP Top 10, Python, TypeScript, secrets (4 configs) | Always run |
 | Trivy | Dependencies, IaC misconfigs, secrets, container images | Always run |
 | TruffleHog | Secrets in git history with live API verification | Always run |
@@ -134,6 +135,8 @@ Use `/agents` to see available agents and launch `claude-code-security-plugins:s
 | mcps-audit | MCP skill/tool permission audit, prompt injection risks | MCP projects only |
 | OSV-Scanner | SCA — dependency vulnerabilities via OSV.dev database | Always run |
 | mcp-scan | MCP tool poisoning, prompt injection, rug pulls | Opt-in only (asks user) |
+| security-audit *(bundled)* | Claude config audit — hooks, MCP servers, skills, CLAUDE.md | Always run |
+| skill-security-auditor *(bundled)* | Skill/MCP deep analysis — prompt injection, allowed-tools risk, supply chain, risk score 0–100 | `.skill`/`SKILL.md` files present |
 
 ### Manual review categories
 
@@ -156,10 +159,24 @@ Each release applies a prompt optimization pass — adding features while keepin
 
 ### Line count history
 
-| File | v1.0.0 | v1.1.0 | v1.3.0 |
-|------|--------|--------|--------|
-| `.claude/skills/security-scanner/SKILL.md` | 348 lines | 145 lines | 179 lines |
-| `.claude/agents/security-analysis.md` | 142 lines | 112 lines | 112 lines |
+| File | v1.0.0 | v1.1.0 | v1.3.0 | v1.4.0 |
+|------|--------|--------|--------|--------|
+| `.claude/skills/security-scanner/SKILL.md` | 348 lines | 145 lines | 179 lines | 202 lines |
+| `.claude/agents/security-analysis.md` | 142 lines | 112 lines | 112 lines | 112 lines |
+| `scripts/config-audit.py` *(bundled)* | — | — | — | 14.7 KB |
+| `scripts/skill-audit.sh` *(bundled)* | — | — | — | 14.8 KB |
+
+### v1.4.0 — Bundled security-audit + skill-security-auditor, tools: 9 → 11
+
+`security-scanner.skill` is now fully self-contained — no additional `git clone` required for Claude-specific auditing.
+
+| What changed | Detail |
+|---|---|
+| Bundled `scripts/config-audit.py` | Scans Claude hooks, MCP servers, installed skills, CLAUDE.md for safety-bypass instructions |
+| Bundled `scripts/skill-audit.sh` | Deep per-file analysis: prompt injection, allowed-tools risk matrix, tool combination risks, supply chain patterns, MCP vectors, risk score 0–100 |
+| Pre-flight updated | Checks bundled scripts via `<skill-directory>` relative path — no external dependency |
+| `.skill` structure | Added `scripts/` and `reports/` directories inside ZIP |
+| Tools count | 9 → **11** |
 
 ### v1.3.0 — Added 2 tools + 2 Semgrep configs, net +13% words (vs +31% naive)
 
