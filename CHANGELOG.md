@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-04-09
+
+### Added
+
+- **mcp-exfil-scan** *(bundled)* — MCP data exfiltration detection bundled at `scripts/mcp-exfil-scan.sh`. 6-phase scanner detecting: (A) MCP tool description poisoning — natural language exfiltration instructions in tool descriptions, (B) MCP server outbound data flow — webhook URLs, HTTP endpoints in args/env, proxy tunnels (ngrok, cloudflare tunnel), (C) skill-level exfiltration chains — Read+WebFetch, Bash+curl, Grep+WebFetch tool combos with data flow analysis, (D) encoded/obfuscated exfiltration — base64-encoded URLs, hex-encoded URLs, URL shorteners, DNS exfil patterns, (E) environment variable leaking via MCP — sensitive env vars (`*_KEY`, `*_TOKEN`, `*_SECRET`) passed to untrusted MCP servers with outbound capability, (F) GitHub source trust verification — repo age, star count, archived status, trusted org whitelist. Known-safe MCP server whitelist reduces false positives. Uses `jq` for JSON parsing with `python3` fallback. Outputs CRITICAL/HIGH/MEDIUM/LOW findings with risk score 0–100.
+
+### Changed
+
+- Tools count: 11 → **12**
+- Pre-flight check adds `jq` availability check (python3 fallback if missing) and bundled mcp-exfil-scan.sh
+- Step 4 report template: Cross-Tool Observations now correlate mcp-exfil-scan findings with config-audit and skill-audit results
+- Frontmatter description updated with MCP exfiltration trigger keywords (`MCP exfiltration detection`, `data leakage scan`)
+
 ## [1.4.0] - 2026-04-07
 
 ### Added

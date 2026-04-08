@@ -2,7 +2,7 @@
 
 A Claude Code plugin that brings automated security scanning and comprehensive static security review to your development workflow.
 
-It combines **11 scanning tools** with an AI-powered senior AppSec engineer agent that performs deep manual analysis across 12 vulnerability categories — producing actionable, dual-audience reports you can hand to both engineers and stakeholders.
+It combines **12 scanning tools** with an AI-powered senior AppSec engineer agent that performs deep manual analysis across 12 vulnerability categories — producing actionable, dual-audience reports you can hand to both engineers and stakeholders.
 
 This material is a part of a 15-minute short talk at [Claude Code Thailand Meetup on March 15, 2026](https://www.facebook.com/photo?fbid=1600902880954303&set=gm.2182266732311295&idorvanity=1745892855948687). The link to the presentation slide is [here](https://1drv.ms/b/c/65172434bf16609a/IQAyXUe31nHqSpW0JIrVTDj5AZEbZw5RJ8TCYEUV-bdB_x0?e=KEEBpj).
 
@@ -10,7 +10,7 @@ This material is a part of a 15-minute short talk at [Claude Code Thailand Meetu
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `security-scanner` | Skill | Orchestrates Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, CodeQL (GitHub repos), mcps-audit (MCP projects), OSV-Scanner (SCA), mcp-scan (opt-in MCP security), security-audit (Claude config audit), and skill-security-auditor (skill/MCP deep analysis) to produce a structured scan report |
+| `security-scanner` | Skill | Orchestrates Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, CodeQL (GitHub repos), mcps-audit (MCP projects), OSV-Scanner (SCA), mcp-scan (opt-in MCP security), security-audit (Claude config audit), skill-security-auditor (skill/MCP deep analysis), and mcp-exfil-scan (MCP data exfiltration detection) to produce a structured scan report |
 | `security-analysis` | Agent | Senior AppSec engineer that runs the scanner, then performs deep manual review across 12 vulnerability categories |
 
 ## Prerequisites
@@ -44,7 +44,8 @@ brew install osv-scanner
   - **CodeQL** — GitHub repos only. Requires [`gh` CLI](https://cli.github.com/) authenticated and a CodeQL workflow in `.github/workflows/`
   - **mcps-audit** — MCP projects only. Requires `npx` (`npm install -g npx`)
   - **mcp-scan** — MCP security analysis. Requires `uvx` (`pip install uv` or `brew install uv`). **Opt-in only** — sends data to invariantlabs.ai API. Scanner always asks before running.
-  - **security-audit** and **skill-security-auditor** — **bundled inside the `.skill` file**. No separate installation required.
+  - **security-audit**, **skill-security-auditor**, and **mcp-exfil-scan** — **bundled inside the `.skill` file**. No separate installation required.
+  - **jq** — JSON parser used by mcp-exfil-scan. Optional — falls back to `python3` if unavailable. Install: `brew install jq`
 
 ## Installation
 
@@ -65,7 +66,7 @@ claude --plugin-dir ./claude-code-security-plugins
 claude plugin install ./claude-code-security-plugins
 ```
 
-Includes: `security-scanner` skill + `security-analysis` agent + bundled audit scripts (`scripts/config-audit.py`, `scripts/skill-audit.sh`).
+Includes: `security-scanner` skill + `security-analysis` agent + bundled audit scripts (`scripts/config-audit.py`, `scripts/skill-audit.sh`, `scripts/mcp-exfil-scan.sh`).
 
 **Plugin structure inside ZIP:**
 ```
@@ -74,8 +75,9 @@ claude-code-security-plugins/
 │   ├── skills/security-scanner/
 │   │   ├── SKILL.md
 │   │   ├── scripts/
-│   │   │   ├── config-audit.py   # Claude config audit (bundled)
-│   │   │   └── skill-audit.sh    # Skill/MCP deep analysis (bundled)
+│   │   │   ├── config-audit.py     # Claude config audit (bundled)
+│   │   │   ├── skill-audit.sh      # Skill/MCP deep analysis (bundled)
+│   │   │   └── mcp-exfil-scan.sh   # MCP exfiltration detection (bundled)
 │   │   └── reports/
 │   └── agents/security-analysis.md
 └── .claude-plugin/
@@ -102,7 +104,7 @@ Includes bundled audit scripts. Does **not** include the `security-analysis` age
 Pin to a specific release tag to ensure integrity:
 
 ```bash
-claude plugin install claude-code-security-plugins@1.4.0
+claude plugin install claude-code-security-plugins@1.5.0
 ```
 
 > **Security note:** Always install from a tagged release rather than HEAD. Check the [CHANGELOG](CHANGELOG.md) before upgrading.
@@ -155,6 +157,7 @@ Use `/agents` to see available agents and launch `claude-code-security-plugins:s
 | mcp-scan | MCP tool poisoning, prompt injection, rug pulls | Opt-in only (asks user) |
 | security-audit *(bundled)* | Claude config audit — hooks, MCP servers, skills, CLAUDE.md | Always run |
 | skill-security-auditor *(bundled)* | Skill/MCP deep analysis — prompt injection, allowed-tools risk, supply chain, risk score 0–100 | `.skill`/`SKILL.md` files present |
+| mcp-exfil-scan *(bundled)* | MCP exfiltration — tool poisoning, outbound data flow, exfil chains, env leaking, source trust, risk score 0–100 | Always run |
 
 ### Manual review categories
 
@@ -177,12 +180,25 @@ Each release applies a prompt optimization pass — adding features while keepin
 
 ### Line count history
 
-| File | v1.0.0 | v1.1.0 | v1.3.0 | v1.4.0 |
-|------|--------|--------|--------|--------|
-| `.claude/skills/security-scanner/SKILL.md` | 348 lines | 145 lines | 179 lines | 202 lines |
-| `.claude/agents/security-analysis.md` | 142 lines | 112 lines | 112 lines | 112 lines |
-| `scripts/config-audit.py` *(bundled)* | — | — | — | 14.7 KB |
-| `scripts/skill-audit.sh` *(bundled)* | — | — | — | 14.8 KB |
+| File | v1.0.0 | v1.1.0 | v1.3.0 | v1.4.0 | v1.5.0 |
+|------|--------|--------|--------|--------|--------|
+| `.claude/skills/security-scanner/SKILL.md` | 348 lines | 145 lines | 179 lines | 202 lines | 169 lines |
+| `.claude/agents/security-analysis.md` | 142 lines | 112 lines | 112 lines | 112 lines | 86 lines |
+| `scripts/config-audit.py` *(bundled)* | — | — | — | 14.7 KB | 14.7 KB |
+| `scripts/skill-audit.sh` *(bundled)* | — | — | — | 14.8 KB | 14.8 KB |
+| `scripts/mcp-exfil-scan.sh` *(bundled)* | — | — | — | — | 25.9 KB |
+
+### v1.5.0 — MCP data exfiltration detection, tools: 11 → 12
+
+Added `mcp-exfil-scan` — a 6-phase scanner detecting MCP data exfiltration risks. Bundled at `scripts/mcp-exfil-scan.sh`.
+
+| What changed | Detail |
+|---|---|
+| Bundled `scripts/mcp-exfil-scan.sh` | 6-phase scan: tool description poisoning, server outbound data flow, skill exfil chains, encoded/obfuscated payloads, env var leaking, GitHub source trust |
+| Known-safe MCP whitelist | Reduces false positives for trusted MCP servers (anthropic, modelcontextprotocol, github, google, etc.) |
+| Pre-flight updated | Checks `jq` availability (python3 fallback) + bundled mcp-exfil-scan.sh |
+| Cross-tool correlation | mcp-exfil-scan findings correlated with config-audit + skill-audit results |
+| Tools count | 11 → **12** |
 
 ### v1.4.0 — Bundled security-audit + skill-security-auditor, tools: 9 → 11
 

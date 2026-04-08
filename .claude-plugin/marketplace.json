@@ -1,7 +1,7 @@
 {
   "name": "claude-code-security-plugins",
   "metadata": {
-    "description": "Automated security scanning and comprehensive static security review for Claude Code. Combines 9 tools (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan) with a senior AppSec agent covering 12 vulnerability categories."
+    "description": "Automated security scanning and comprehensive static security review for Claude Code. Combines 12 tools (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan, security-audit, skill-security-auditor, mcp-exfil-scan) with a senior AppSec agent covering 12 vulnerability categories."
   },
   "owner": {
     "name": "pisek @ casedone"
@@ -9,13 +9,13 @@
   "plugins": [
     {
       "name": "claude-code-security-plugins",
-      "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan) and comprehensive static security review agent for Claude Code",
-      "version": "1.3.0",
+      "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan, mcp-exfil-scan) and comprehensive static security review agent for Claude Code",
+      "version": "1.5.0",
       "author": { "name": "pisek @ casedone" },
       "source": "./",
       "category": "security",
-      "homepage": "https://github.com/casedone/claude-code-security-plugins",
-      "tags": ["security", "sast", "vulnerability", "scanning", "appsec", "owasp", "secrets", "sca", "dependency", "mcp-scan"]
+      "homepage": "https://github.com/mp3wizard/claude-code-security-plugins",
+      "tags": ["security", "sast", "vulnerability", "scanning", "appsec", "owasp", "secrets", "sca", "dependency", "mcp-scan", "mcp-exfiltration", "claude-config-audit", "skill-security"]
     }
   ]
 }

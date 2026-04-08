@@ -1,31 +1,32 @@
 ---
 name: security-scanner
 description: >
-  Run security scanning tools (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, OSV-Scanner, mcp-scan,
-  security-audit, skill-security-auditor) against a codebase and return structured markdown findings.
-  Trigger on: security scan, vulnerability check, secrets scan, dependency audit, SAST analysis,
-  Claude config audit, skill security check, or when the security-analysis agent needs automated findings.
+  Run 12 security tools (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, OSV-Scanner, mcp-scan,
+  security-audit, skill-security-auditor, mcp-exfil-scan) against a codebase; return structured markdown.
+  Trigger: security scan, vuln check, secrets scan, dependency audit, SAST, Claude config audit,
+  skill security check, MCP exfiltration detection, data leakage scan.
 ---
 
 # Security Scanner
 
-Runs automated security tools against a target path and assembles a structured markdown report.
+Scan target path with available tools → assemble structured markdown report.
 
 ## Tools
 
 | Tool | Purpose |
 |------|---------|
 | Gitleaks | Secrets in git history + filesystem |
-| Bandit | Python SAST — injection, unsafe deserialization, subprocess, weak crypto |
-| Semgrep | Multi-language SAST — OWASP Top 10, Python, TypeScript, secrets |
-| Trivy | Dependencies, IaC misconfigs, secrets, containers |
-| TruffleHog | Secrets in git history with live API verification |
-| CodeQL | Deep semantic SAST via GitHub Actions (GitHub repos only) |
-| mcps-audit | MCP skill/tool permission audit |
-| OSV-Scanner | SCA — dependency vulnerabilities via OSV.dev |
-| mcp-scan | [OPT-IN] MCP tool poisoning, prompt injection, rug pulls (→ invariantlabs.ai API) |
-| security-audit | Claude Config Audit — hooks, MCP servers, skills, CLAUDE.md safety checks |
-| skill-security-auditor | Skill/MCP deep analysis — prompt injection, allowed-tools risk, supply chain, risk scoring |
+| Bandit | Python SAST |
+| Semgrep | Multi-lang SAST — OWASP Top 10, Python, TypeScript, secrets |
+| Trivy | Deps, IaC misconfigs, secrets, containers |
+| TruffleHog | Secrets with live API verification |
+| CodeQL | Semantic SAST via GitHub Actions |
+| mcps-audit | MCP permission audit |
+| OSV-Scanner | SCA via OSV.dev |
+| mcp-scan | [OPT-IN] MCP tool poisoning, prompt injection (→ invariantlabs.ai) |
+| security-audit | Claude config — hooks, MCP servers, skills, CLAUDE.md |
+| skill-security-auditor | Skill/MCP — prompt injection, tool risk, supply chain, score 0–100 |
+| mcp-exfil-scan | MCP exfiltration — tool poisoning, outbound flow, exfil chains, env leak, source trust |
 
 ## Step 1: Scan Target
 
@@ -37,71 +38,51 @@ Default to cwd. Print: `Scan target: <absolute path>`
 for tool in bandit semgrep trivy trufflehog gitleaks osv-scanner; do
   command -v "$tool" &>/dev/null && echo "OK  $tool $($tool --version 2>&1 | head -1)" || echo "MISSING  $tool"
 done
-command -v gh &>/dev/null && echo "OK  gh (CodeQL available)" || echo "MISSING  gh"
-command -v npx &>/dev/null && echo "OK  npx (mcps-audit available)" || echo "MISSING  npx"
-command -v uvx &>/dev/null && echo "OK  uvx (mcp-scan available — opt-in only)" || echo "MISSING  uvx (mcp-scan — optional, opt-in)"
+command -v gh &>/dev/null && echo "OK  gh (CodeQL)" || echo "MISSING  gh"
+command -v npx &>/dev/null && echo "OK  npx (mcps-audit)" || echo "MISSING  npx"
+command -v uvx &>/dev/null && echo "OK  uvx (mcp-scan — opt-in)" || echo "MISSING  uvx"
+command -v jq &>/dev/null && echo "OK  jq" || echo "INFO  jq missing (mcp-exfil-scan uses python3 fallback)"
 SKILL_DIR="$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")"
-[ -f "$SKILL_DIR/scripts/config-audit.py" ] && echo "OK  config-audit (Claude config audit — bundled)" || echo "MISSING  config-audit.py (bundled script not found)"
-[ -f "$SKILL_DIR/scripts/skill-audit.sh" ] && echo "OK  skill-audit (skill/MCP deep analysis — bundled)" || echo "MISSING  skill-audit.sh (bundled script not found)"
+for s in config-audit.py skill-audit.sh mcp-exfil-scan.sh; do
+  [ -f "$SKILL_DIR/scripts/$s" ] && echo "OK  $s (bundled)" || echo "MISSING  $s"
+done
 ```
 
-**Trivy supply chain check** — run after pre-flight loop:
+**Trivy supply chain check** — after pre-flight:
 ```bash
 trivy_ver=$(trivy --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 case "$trivy_ver" in 0.69.4|0.69.5|0.69.6)
-  echo "⚠️ WARNING: Trivy $trivy_ver COMPROMISED (supply chain attack GHSA-69fq-xp46-6x23, Mar 2026). Downgrade to v0.69.3 or upgrade to v0.69.7+."
+  echo "⚠️ WARNING: Trivy $trivy_ver COMPROMISED (GHSA-69fq-xp46-6x23). Use v0.69.3 or v0.69.7+."
   ;; esac
 ```
 
-All found → proceed. Any missing → list and ask: "Missing: **[list]**. Skip (noted as gap) or Install?"
-
-Install: pip (bandit, semgrep); brew (trivy, trufflehog, gitleaks, osv-scanner); uvx (mcp-scan, no install needed). Re-run pre-flight. Fail → skip or abort.
+All found → proceed. Missing → ask: "Missing: **[list]**. Skip or Install?"
+Install: pip (bandit, semgrep); brew (trivy, trufflehog, gitleaks, osv-scanner); uvx (mcp-scan). Re-run pre-flight.
 
 ## Step 3: Run Each Available Tool
 
-**3a-pre. Gitleaks** (run first as early-warning):
+**3a-pre. Gitleaks** (early-warning):
 ```bash
 gitleaks detect --source <path> --report-format sarif --report-path gitleaks.sarif --no-banner 2>&1
 gitleaks detect --source <path> --no-banner 2>&1
 ```
 
-**3a. Bandit** — skip if no `.py` files (`find <path> -name "*.py" | head -1`):
+**3a. Bandit** — skip if no `.py` files:
 ```bash
 bandit -r <path> -f txt 2>&1
 ```
 
-**3b. Semgrep** — define common flags, run each config separately to prevent OOM:
+**3b. Semgrep** — common flags in `$SG`, run configs separately (OOM prevention):
 ```bash
 SG="semgrep scan --metrics=off --disable-version-check --max-memory 1500 --jobs 1 --timeout 20 --timeout-threshold 2 --max-target-bytes 300000"
 ```
+OWASP (always): `$SG --config p/owasp-top-ten --include "*.py" --include "*.js" --include "*.ts" --include "*.jsx" --include "*.tsx" --include "*.java" --include "*.go" --include "*.rb" <path> 2>&1`
+Python (if `.py`): `$SG --config p/python --include "*.py" <path> 2>&1`
+TypeScript (if `.ts`/`.tsx`): `$SG --config p/typescript --include "*.ts" --include "*.tsx" <path> 2>&1`
+Secrets (always): `$SG --config p/secrets <path> 2>&1`
+Exit 137 → note "Semgrep OOM — re-run with more RAM."
 
-OWASP Top 10 (always):
-```bash
-$SG --config p/owasp-top-ten --include "*.py" --include "*.js" --include "*.ts" --include "*.jsx" --include "*.tsx" --include "*.java" --include "*.go" --include "*.rb" <path> 2>&1
-```
-
-Python (if `.py` files exist):
-```bash
-$SG --config p/python --include "*.py" <path> 2>&1
-```
-
-TypeScript (if `.ts`/`.tsx` files exist):
-```bash
-$SG --config p/typescript --include "*.ts" --include "*.tsx" <path> 2>&1
-```
-
-Secrets (always):
-```bash
-$SG --config p/secrets <path> 2>&1
-```
-
-If Semgrep exits 137 (OOM): note "Semgrep OOM — re-run on a machine with more RAM for full coverage."
-_(1.5 GB cap; single job; split 4 configs to reduce peak memory; skip files >300 KB)_
-
-**3c. Trivy:**
-```bash
-trivy fs <path> 2>&1
-```
+**3c. Trivy:** `trivy fs <path> 2>&1`
 
 **3d. TruffleHog:**
 ```bash
@@ -110,58 +91,43 @@ git -C <path> rev-parse --git-dir 2>/dev/null \
   || trufflehog filesystem <path> --no-update 2>&1
 ```
 
-**3e. CodeQL** (GitHub repos + `gh` CLI only):
-```bash
-git -C <path> remote get-url origin 2>/dev/null | grep -i "github.com"
-```
-Check `.github/workflows/` for CodeQL workflow. Present → `gh run list --workflow codeql.yml`. Absent → note gap. Skip if not GitHub, no `gh`, or no internet.
+**3e. CodeQL** (GitHub + `gh` only):
+Check `git remote` for github.com → check `.github/workflows/` for CodeQL → `gh run list --workflow codeql.yml`. Skip if not GitHub/no `gh`.
 
-**3f. mcps-audit** (only if MCP files found):
+**3f. mcps-audit** (if MCP files found):
 ```bash
 find <path> -name "*.skill" -o -name "SKILL.md" -o -name "mcp*.json" -o -name ".mcp*" 2>/dev/null | head -5
 npx mcps-audit <path> 2>&1
 ```
 
-**3g. OSV-Scanner** — SCA dependency scan:
+**3g. OSV-Scanner:**
 ```bash
 osv-scanner scan source -r <path> 2>&1
 ```
-If lockfiles present (`find <path> -name "package-lock.json" -o -name "yarn.lock" -o -name "pnpm-lock.yaml" -o -name "poetry.lock" -o -name "go.sum" -o -name "Cargo.lock" | head -1`), also scan:
-```bash
-osv-scanner scan -L <lockfile> 2>&1
-```
+If lockfiles present, also: `osv-scanner scan -L <lockfile> 2>&1`
 
-**3h. mcp-scan [OPT-IN]** — MCP tool poisoning & prompt injection:
-⚠️ **Privacy:** mcp-scan sends MCP tool descriptions to invariantlabs.ai for analysis. **ASK the user before running — never run by default.**
+**3h. mcp-scan [OPT-IN]** — ⚠️ Sends data to invariantlabs.ai. **ASK user first.**
+Consented: `uvx mcp-scan@latest 2>&1` | Local-only: `uvx mcp-scan@latest inspect 2>&1`
 
-If user consents:
-```bash
-uvx mcp-scan@latest 2>&1
-```
-Local-only inspection (no API call):
-```bash
-uvx mcp-scan@latest inspect 2>&1
-```
+**Bundled scripts** (3i–3k) are at `<skill-directory>/scripts/`.
 
-**3i. security-audit** — Claude Code configuration audit:
-Bundled at `<skill-directory>/scripts/config-audit.py`.
-```bash
-python3 <skill-directory>/scripts/config-audit.py <path> 2>&1
-```
-Scans: global `~/.claude/settings.json` hooks, MCP servers, installed skills/plugins for hidden commands, project-level `.claude/` configs, and `CLAUDE.md` for safety-bypass instructions. Outputs findings with severity (CRITICAL/HIGH/MEDIUM/LOW).
+**3i. security-audit:** `python3 <skill-directory>/scripts/config-audit.py <path> 2>&1`
+Scans: `~/.claude/settings.json` hooks, MCP servers, skills/plugins, `.claude/` configs, CLAUDE.md safety-bypass. Outputs CRITICAL/HIGH/MEDIUM/LOW.
 
-**3j. skill-security-auditor** — Skill & MCP deep analysis:
-Bundled at `<skill-directory>/scripts/skill-audit.sh`. Scan all `.skill` and `SKILL.md` files found in target:
+**3j. skill-security-auditor:** Scan all `.skill`/`SKILL.md` files:
 ```bash
 find <path> -name "*.skill" -o -name "SKILL.md" 2>/dev/null | while read f; do
   bash <skill-directory>/scripts/skill-audit.sh "$f" 2>&1
 done
 ```
-Checks: prompt injection patterns, allowed-tools risk matrix, tool combination risks (Read+WebFetch, Bash+WebFetch), supply chain attacks (postinstall, typosquatting), MCP-specific vectors (SSRF, path traversal, OAuth scope), and source verification via `gh` CLI. Outputs risk score 0–100 per file.
+Checks: prompt injection, tool risk matrix, tool combos (Read+WebFetch, Bash+WebFetch), supply chain, MCP vectors (SSRF, path traversal, OAuth scope), source verification. Score 0–100.
+
+**3k. mcp-exfil-scan:** `bash <skill-directory>/scripts/mcp-exfil-scan.sh <path> 2>&1`
+Scans: tool description poisoning, outbound data flow (webhooks, tunnels), exfil chains (Read+WebFetch, Bash+curl), encoded payloads (base64 URLs, DNS exfil), env var leaking, GitHub source trust. Score 0–100.
 
 ## Step 4: Assemble Report
 
-Extract counts from each tool's output, then write in one pass:
+Extract counts, write in one pass:
 
 ```
 # Automated Security Scan Report
@@ -172,9 +138,9 @@ Extract counts from each tool's output, then write in one pass:
 | Tool | Status | Version / Note |
 |------|--------|----------------|
 ```
-One row per tool from Tools table above. Status: OK / SKIPPED / N/A / OPT-IN. Include version or skip reason.
+One row per tool. Status: OK / SKIPPED / N/A / OPT-IN.
 
-For each tool that ran:
+Per tool that ran:
 ```
 ## <Tool> — <Purpose>
 **Summary:** <counts> (or "Skipped: <reason>")
@@ -185,19 +151,19 @@ For each tool that ran:
 End with:
 ```
 ## Cross-Tool Observations
-Issues flagged by multiple tools (higher-confidence signals), or "No cross-tool overlaps detected."
-Include correlations between security-audit config findings and skill-security-auditor risk scores when both ran.
+Higher-confidence signals from multiple tools, or "No cross-tool overlaps."
+Correlate config-audit, skill-audit, and mcp-exfil-scan when multiple ran. Flag MCP servers appearing in both config-audit and mcp-exfil-scan.
 
 ## Coverage Gaps
-Categories not covered by tools that ran: business logic, IDOR, skipped-tool gaps, runtime behavior.
-If config-audit.py or skill-audit.sh failed, note: "Claude config/skill audit incomplete — check bundled scripts."
+Not covered: business logic, IDOR, runtime behavior, skipped-tool gaps.
+If bundled scripts failed: "Claude config/skill/MCP exfil audit incomplete — check scripts."
 ```
 
 ## Operational Rules
 
 1. Never read `.env`/credential files — note presence only.
-2. Never truncate tool output. Redact detected secret values with `[REDACTED]` (keep file path, line, detector type). Never fabricate counts — derive from actual output.
-3. Fail loudly on pre-flight — missing tools must be surfaced before scanning begins.
-4. TruffleHog live-verified secrets are Critical — flag prominently even if overall tone is mild.
-5. Tool crash/non-zero exit → include error output and note "tool exited with error" in summary.
-6. mcp-scan is opt-in only. Always ask the user before running. Include privacy warning in output.
+2. Never truncate tool output. Redact secrets with `[REDACTED]` (keep path, line, detector). Never fabricate counts.
+3. Fail loudly on pre-flight — surface missing tools before scanning.
+4. TruffleHog live-verified secrets are Critical — flag prominently.
+5. Tool crash/non-zero exit → include error output, note in summary.
+6. mcp-scan is opt-in only. Ask user first. Include privacy warning.

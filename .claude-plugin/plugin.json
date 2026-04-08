@@ -1,12 +1,12 @@
 {
   "name": "claude-code-security-plugins",
-  "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan) and comprehensive static security review agent for Claude Code",
-  "version": "1.4.0",
+  "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan, mcp-exfil-scan) and comprehensive static security review agent for Claude Code",
+  "version": "1.5.0",
   "author": {
     "name": "pisek @ casedone"
   },
   "repository": "https://github.com/casedone/claude-code-security-plugins",
   "license": "MIT",
-  "keywords": ["security", "sast", "vulnerability", "scanning", "appsec", "owasp", "secrets", "gitleaks", "trivy", "sca", "osv", "mcp-scan", "dependency"],
+  "keywords": ["security", "sast", "vulnerability", "scanning", "appsec", "owasp", "secrets", "gitleaks", "trivy", "sca", "osv", "mcp-scan", "mcp-exfiltration", "data-exfiltration", "dependency"],
   "skills": ["./.claude/skills/security-scanner"]
 }
