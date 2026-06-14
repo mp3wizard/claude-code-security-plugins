@@ -6,3 +6,13 @@
 .Trashes
 ehthumbs.db
 Desktop.ini
+
+# Claude Code local settings (machine-specific — never distribute)
+.claude/settings.local.json
+
+# Scan scratch written at repo root (fixtures under tests/ stay tracked)
+/*.sarif
+/combined.json
+
+# Generated scan reports
+.claude/skills/security-scanner/reports/*.txt

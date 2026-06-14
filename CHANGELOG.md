@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2026-06-14
+
+### Added
+
+- **skillspector** — NVIDIA AI-skill scanner added as tool 4l (tools **12 → 13**). Scans `*.skill` / `SKILL.md` / `AGENTS.md` artifacts across 64 patterns in 16 categories (prompt injection, data exfiltration, privilege escalation, supply chain, excessive agency, malicious code). SARIF output, risk score 0–100. Defaults to `--no-llm` (local-only); LLM-assisted mode is **opt-in** behind the same privacy gate as mcp-scan. Conditional — runs only when AI-skill artifacts are present.
+- **`scripts/aggregate-findings.py`** *(bundled)* — merges SARIF reports from Gitleaks/Semgrep/Trivy/skillspector, deduplicates secret findings by `(file, line, fingerprint)`, prints a severity rollup, and supports `--fail-on <critical|high|medium|low>` for CI/CD gating (non-zero exit). Deterministic, no network, no LLM.
+- **`scripts/SHA256SUMS`** *(bundled)* — integrity / tamper-evidence manifest of all bundled scripts. Pre-flight verifies it with `shasum -c` and refuses to run on mismatch. Detects corruption, partial downloads, and accidental edits — note it is not a defense against a malicious redistributor who regenerates the manifest alongside a tampered script.
+- **`apts-audit.sh run`** subcommand — executes a tool and records *measured* exit code, wall-time, and findings count instead of LLM-asserted values (APTS § Auditability integrity). `finalize` now reports measured vs asserted run counts.
+- **`build-dist.sh`** — reproducible packaging script that rebuilds both distribution artifacts from source, regenerates `SHA256SUMS`, and hard-excludes `settings.local.json` + `.DS_Store`. Fails the build if local config ever leaks into the ZIP.
+- **`tests/`** — regression suite with known-vulnerable fixtures and a runner (`tests/run-tests.sh`) asserting that Bandit, Semgrep, Gitleaks, skill-audit, mcp-exfil-scan, and aggregate-findings all fire.
+
+### Fixed
+
+- **Stale `.skill` distribution** — the shipped `security-scanner.skill` had drifted to a v1.4.0-era build missing `mcp-exfil-scan.sh` and `apts-audit.sh`; users installing it got a broken skill. Now rebuilt from current source.
+- **Version drift** — `marketplace.json` was pinned at `1.5.0` while `plugin.json` was `1.6.0`. Both now `1.7.0`.
+- **Repository URL drift** — `plugin.json` pointed at `github.com/casedone/...` while README/marketplace used `github.com/mp3wizard/...`. Canonicalised to `mp3wizard`.
+- **Local-config leak** — the plugin ZIP bundled `.claude/settings.local.json` (author's absolute home paths + a pre-approved Bash permission allowlist that would merge into any installer's config). Now git-ignored, untracked, and excluded from both artifacts.
+- **Fragile `SKILL_DIR` resolution** — replaced the `$0`/`readlink -f` derivation (unreliable under the inline Bash-tool exec model, and `readlink -f` is unsupported on stock macOS) with `${CLAUDE_PLUGIN_ROOT}` + a known-path fallback search.
+
+### Changed
+
+- Semgrep step now discloses files skipped by `--max-target-bytes 300000` (>300 KB) in the report's Coverage Disclosure.
+- `plugin.json` / `marketplace.json` bumped to `1.7.0`; descriptions, keywords, and tool counts updated for skillspector.
+
 ## [1.6.0] - 2026-04-19
 
 ### Added

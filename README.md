@@ -2,7 +2,7 @@
 
 A Claude Code plugin that brings automated security scanning and comprehensive static security review to your development workflow.
 
-It combines **12 scanning tools** with an AI-powered senior AppSec engineer agent that performs deep manual analysis across 12 vulnerability categories — producing actionable, dual-audience reports you can hand to both engineers and stakeholders.
+It combines **13 scanning tools** with an AI-powered senior AppSec engineer agent that performs deep manual analysis across 12 vulnerability categories — producing actionable, dual-audience reports you can hand to both engineers and stakeholders.
 
 This material is a part of a 15-minute short talk at [Claude Code Thailand Meetup on March 15, 2026](https://www.facebook.com/photo?fbid=1600902880954303&set=gm.2182266732311295&idorvanity=1745892855948687). The link to the presentation slide is [here](https://1drv.ms/b/c/65172434bf16609a/IQAyXUe31nHqSpW0JIrVTDj5AZEbZw5RJ8TCYEUV-bdB_x0?e=KEEBpj).
 
@@ -10,7 +10,7 @@ This material is a part of a 15-minute short talk at [Claude Code Thailand Meetu
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `security-scanner` | Skill | Orchestrates Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, CodeQL (GitHub repos), mcps-audit (MCP projects), OSV-Scanner (SCA), mcp-scan (opt-in MCP security), security-audit (Claude config audit), skill-security-auditor (skill/MCP deep analysis), and mcp-exfil-scan (MCP data exfiltration detection) to produce a structured scan report |
+| `security-scanner` | Skill | Orchestrates Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, CodeQL (GitHub repos), mcps-audit (MCP projects), OSV-Scanner (SCA), mcp-scan (opt-in MCP security), security-audit (Claude config audit), skill-security-auditor (skill/MCP deep analysis), mcp-exfil-scan (MCP data exfiltration detection), and skillspector (NVIDIA AI-skill scanner) to produce a structured scan report |
 | `security-analysis` | Agent | Senior AppSec engineer that runs the scanner, then performs deep manual review across 12 vulnerability categories |
 
 ## Prerequisites
@@ -44,6 +44,7 @@ brew install osv-scanner
   - **CodeQL** — GitHub repos only. Requires [`gh` CLI](https://cli.github.com/) authenticated and a CodeQL workflow in `.github/workflows/`
   - **mcps-audit** — MCP projects only. Requires `npx` (`npm install -g npx`)
   - **mcp-scan** — MCP security analysis. Requires `uvx` (`pip install uv` or `brew install uv`). **Opt-in only** — sends data to invariantlabs.ai API. Scanner always asks before running.
+  - **skillspector** — NVIDIA AI-skill scanner (64 patterns / 16 categories, SARIF output, risk score 0–100). Runs only when AI-skill artifacts (`*.skill`, `SKILL.md`, `AGENTS.md`) are present. Install: `git clone https://github.com/NVIDIA/skillspector && cd skillspector && uv venv .venv && . .venv/bin/activate && make install` (or `make docker-build`). Note: a venv install only exposes `skillspector` on `PATH` while the venv is active — activate it (or symlink the binary) before scanning, or the pre-flight reports it missing. Defaults to `--no-llm` (local-only); **LLM-assisted mode is opt-in** and the scanner asks first, same privacy gate as mcp-scan.
   - **security-audit**, **skill-security-auditor**, and **mcp-exfil-scan** — **bundled inside the `.skill` file**. No separate installation required.
   - **jq** — JSON parser used by mcp-exfil-scan. Optional — falls back to `python3` if unavailable. Install: `brew install jq`
 
@@ -75,15 +76,20 @@ claude-code-security-plugins/
 │   ├── skills/security-scanner/
 │   │   ├── SKILL.md
 │   │   ├── scripts/
-│   │   │   ├── config-audit.py     # Claude config audit (bundled)
-│   │   │   ├── skill-audit.sh      # Skill/MCP deep analysis (bundled)
-│   │   │   └── mcp-exfil-scan.sh   # MCP exfiltration detection (bundled)
+│   │   │   ├── config-audit.py       # Claude config audit (bundled)
+│   │   │   ├── skill-audit.sh        # Skill/MCP deep analysis (bundled)
+│   │   │   ├── mcp-exfil-scan.sh     # MCP exfiltration detection (bundled)
+│   │   │   ├── apts-audit.sh         # APTS measured audit log (bundled)
+│   │   │   ├── aggregate-findings.py # SARIF merge + dedup + CI gate (bundled)
+│   │   │   └── SHA256SUMS            # integrity manifest, verified at pre-flight
 │   │   └── reports/
 │   └── agents/security-analysis.md
 └── .claude-plugin/
     ├── plugin.json
     └── marketplace.json
 ```
+
+> Both artifacts are produced by [`build-dist.sh`](build-dist.sh) so they never drift from source. It regenerates `SHA256SUMS`, rebuilds both the `.skill` and the plugin `.zip`, and hard-excludes `settings.local.json` and `.DS_Store`. Regression tests live in [`tests/`](tests/) — run `bash tests/run-tests.sh` to confirm the scanners fire against the known-vulnerable fixtures.
 
 ### Option 2 — Skill only (.skill file)
 
@@ -104,7 +110,7 @@ Includes bundled audit scripts. Does **not** include the `security-analysis` age
 Pin to a specific release tag to ensure integrity:
 
 ```bash
-claude plugin install claude-code-security-plugins@1.5.0
+claude plugin install claude-code-security-plugins@1.7.0
 ```
 
 > **Security note:** Always install from a tagged release rather than HEAD. Check the [CHANGELOG](CHANGELOG.md) before upgrading.
@@ -158,6 +164,7 @@ Use `/agents` to see available agents and launch `claude-code-security-plugins:s
 | security-audit *(bundled)* | Claude config audit — hooks, MCP servers, skills, CLAUDE.md | Always run |
 | skill-security-auditor *(bundled)* | Skill/MCP deep analysis — prompt injection, allowed-tools risk, supply chain, risk score 0–100 | `.skill`/`SKILL.md` files present |
 | mcp-exfil-scan *(bundled)* | MCP exfiltration — tool poisoning, outbound data flow, exfil chains, env leaking, source trust, risk score 0–100 | Always run |
+| skillspector | AI-skill scanner (NVIDIA) — 64 patterns / 16 categories: prompt injection, data exfiltration, privilege escalation, supply chain, excessive agency, malicious code; SARIF, risk score 0–100 | AI-skill artifacts present; LLM mode opt-in |
 
 ### Manual review categories
 
@@ -193,14 +200,33 @@ Each release applies a prompt optimization pass — adding features while keepin
 
 ### Line count history
 
-| File | v1.0.0 | v1.1.0 | v1.3.0 | v1.4.0 | v1.5.0 | v1.6.0 |
-|------|--------|--------|--------|--------|--------|--------|
-| `.claude/skills/security-scanner/SKILL.md` | 348 lines | 145 lines | 179 lines | 202 lines | 169 lines | 188 lines |
-| `.claude/agents/security-analysis.md` | 142 lines | 112 lines | 112 lines | 112 lines | 86 lines | 97 lines |
-| `scripts/config-audit.py` *(bundled)* | — | — | — | 14.7 KB | 14.7 KB | 14.7 KB |
-| `scripts/skill-audit.sh` *(bundled)* | — | — | — | 14.8 KB | 14.8 KB | 14.8 KB |
-| `scripts/mcp-exfil-scan.sh` *(bundled)* | — | — | — | — | 25.9 KB | 25.9 KB |
-| `scripts/apts-audit.sh` *(bundled, new)* | — | — | — | — | — | 2.0 KB |
+| File | v1.0.0 | v1.1.0 | v1.3.0 | v1.4.0 | v1.5.0 | v1.6.0 | v1.7.0 |
+|------|--------|--------|--------|--------|--------|--------|--------|
+| `.claude/skills/security-scanner/SKILL.md` | 348 lines | 145 lines | 179 lines | 202 lines | 169 lines | 188 lines | 234 lines |
+| `.claude/agents/security-analysis.md` | 142 lines | 112 lines | 112 lines | 112 lines | 86 lines | 97 lines | 97 lines |
+| `scripts/config-audit.py` *(bundled)* | — | — | — | 14.7 KB | 14.7 KB | 14.7 KB | 14.7 KB |
+| `scripts/skill-audit.sh` *(bundled)* | — | — | — | 14.8 KB | 14.8 KB | 14.8 KB | 14.8 KB |
+| `scripts/mcp-exfil-scan.sh` *(bundled)* | — | — | — | — | 25.9 KB | 25.9 KB | 25.9 KB |
+| `scripts/apts-audit.sh` *(bundled)* | — | — | — | — | — | 2.0 KB | 3.4 KB |
+| `scripts/aggregate-findings.py` *(bundled, new)* | — | — | — | — | — | — | 7.6 KB |
+
+### v1.7.0 — skillspector (AI-skill scanner), measured audit log, SARIF aggregation, release-integrity fixes
+
+Tools **12 → 13** (added NVIDIA **skillspector**), plus a round of correctness and release-engineering fixes.
+
+| What changed | Detail |
+|---|---|
+| **skillspector** integration | NVIDIA AI-skill scanner added as tool 4l — runs when AI-skill artifacts are present; 64 patterns / 16 categories; SARIF output; LLM mode opt-in (defaults to `--no-llm`, same privacy gate as mcp-scan) |
+| Bundled `scripts/aggregate-findings.py` | Merges SARIF from Gitleaks/Semgrep/Trivy/skillspector, **deduplicates secrets** by `(file, line, fingerprint)`, prints a severity rollup, and supports **`--fail-on <level>` CI/CD gating** (non-zero exit) |
+| Measured audit log | `apts-audit.sh run <tool> <log> -- <cmd>` now executes the tool and records **measured** exit code, wall-time, and findings count — replacing LLM-asserted values (APTS § Auditability integrity). `finalize` reports measured vs asserted counts |
+| Bundled-script integrity | `scripts/SHA256SUMS` manifest + pre-flight `shasum -c` verification — refuses to run on checksum mismatch (tamper-evidence: catches corruption / accidental edits; not a defense against a redistributor who regenerates the manifest) |
+| Robust `SKILL_DIR` resolution | Replaced the unreliable `$0`/`readlink -f` derivation with `${CLAUDE_PLUGIN_ROOT}` + known-path fallback search (the inline-Bash exec model makes `$0` the shell, not the skill path) |
+| Large-file coverage disclosure | Semgrep's `--max-target-bytes 300000` silently skips files >300 KB — the report now lists them |
+| **Fixed: stale `.skill` distribution** | The shipped `security-scanner.skill` had drifted to a v1.4.0-era build (missing `mcp-exfil-scan.sh` + `apts-audit.sh`). Now rebuilt from source by `build-dist.sh` |
+| **Fixed: version/URL drift** | `marketplace.json` was pinned at 1.5.0 while `plugin.json` was 1.6.0; repo URL disagreed (`casedone` vs `mp3wizard`). Both reconciled |
+| **Fixed: local-config leak** | The plugin ZIP bundled `settings.local.json` (author's absolute paths + a pre-approved Bash allowlist). Now git-ignored, untracked, and hard-excluded from both artifacts |
+| `build-dist.sh` (new) | Reproducible packaging — regenerates `SHA256SUMS`, rebuilds both artifacts, fails the build if `settings.local.json` ever reappears in the ZIP |
+| `tests/` (new) | Regression suite — known-vulnerable fixtures + a runner asserting Bandit/Semgrep/Gitleaks/skill-audit/mcp-exfil-scan/aggregate-findings all fire |
 
 ### v1.6.0 — OWASP APTS alignment + Sonnet 4.6 prompt optimization
 
