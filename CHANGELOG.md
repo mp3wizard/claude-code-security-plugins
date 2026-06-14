@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.1] - 2026-06-14
+
+### Fixed
+
+- **`apts-audit.sh run` corrupted the audit log on zero-finding tools** — the findings-count proxy used `grep -icE ... || echo 0`, but `grep -c` already prints `0` (and exits 1) when there are no matches, so `|| echo 0` appended a second `0`, producing a multi-line value that broke the JSON record (`"findings":0\n0,"measured":true}`). Now uses `| head -1` + integer sanitisation. Regression introduced in v1.7.0; surfaced by a self-scan. (APTS § Auditability)
+- **`mcp-exfil-scan.sh` violated scope enforcement** — it unconditionally searched `~/.claude/skills` and the global `~/.claude/settings*.json` regardless of the scan target, so scanning any unrelated project reported the user's own installed skills/MCP servers as findings (out-of-scope, mostly false positives). Global config is now audited only when the scan target IS `~/.claude` (new `AUDIT_GLOBAL` gate). (APTS § Scope Enforcement)
+
+### Added
+
+- Two regression tests in `tests/run-tests.sh` covering both fixes (zero-finding audit record stays valid JSON; mcp-exfil-scan stays within the target).
+
 ## [1.7.0] - 2026-06-14
 
 ### Added

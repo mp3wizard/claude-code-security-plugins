@@ -37,8 +37,11 @@ case "$cmd" in
     "$@" 2>&1 | tee "$tmp"          # stream tool output unchanged; capture a copy
     ec=${PIPESTATUS[0]}             # real tool exit (bash); tee masks it otherwise
     dur=$(( $(_now_ms) - start ))
-    # MEASURED findings proxy: lines matching severity/finding keywords (deterministic, not LLM-estimated)
-    n=$(grep -icE '(CRITICAL|HIGH|MEDIUM|LOW|WARNING|ERROR|finding|vuln|secret|poison|exfil)' "$tmp" 2>/dev/null || echo 0)
+    # MEASURED findings proxy: lines matching severity/finding keywords (deterministic, not LLM-estimated).
+    # grep -c prints exactly one integer and exits 1 on zero matches — do NOT use `|| echo 0`
+    # (that would append a second "0", producing a multi-line value that corrupts the JSON record).
+    n=$(grep -icE '(CRITICAL|HIGH|MEDIUM|LOW|WARNING|ERROR|finding|vuln|secret|poison|exfil)' "$tmp" 2>/dev/null | head -1)
+    case "$n" in ''|*[!0-9]*) n=0 ;; esac
     rm -f "$tmp"
     printf '{"event":"tool","ts":"%s","tool":"%s","exit":%s,"duration_ms":%s,"findings":%s,"measured":true}\n' \
       "$(_now)" "$(_esc "$tool")" "$ec" "$dur" "$n" >> "$log"

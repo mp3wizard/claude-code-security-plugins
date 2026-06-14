@@ -35,6 +35,28 @@ bash "$SCRIPTS/apts-audit.sh" run failer "$L" -- sh -c 'exit 3' >/dev/null 2>&1
 [ $? -eq 3 ] && ok "wrapper propagates tool exit code (3)" || no "wrapper should exit 3"
 rm -f "$L"
 
+echo "== apts-audit.sh: zero-findings record stays valid JSON (regression) =="
+L="$(bash "$SCRIPTS/apts-audit.sh" init /tmp)"
+bash "$SCRIPTS/apts-audit.sh" run zerotool "$L" -- printf 'nothing here\nall clean\n' >/dev/null 2>&1
+if python3 -c "import json,sys; [json.loads(x) for x in open('$L')]" 2>/dev/null && grep -q '"tool":"zerotool","exit":0,"duration_ms":[0-9]*,"findings":0,"measured":true' "$L"; then
+  ok "0-finding run writes a single valid JSON record"
+else
+  no "0-finding run corrupted the audit log (grep -c || echo 0 regression)"
+fi
+rm -f "$L"
+
+echo "== mcp-exfil-scan.sh: respects scope, no global ~/.claude leakage (regression) =="
+if [ -f "$SCRIPTS/mcp-exfil-scan.sh" ]; then
+  SCOPE="$(bash "$SCRIPTS/mcp-exfil-scan.sh" "$FIX" 2>&1)"
+  if echo "$SCOPE" | grep -q "$HOME/.claude/skills"; then
+    no "mcp-exfil-scan scanned out-of-scope $HOME/.claude/skills"
+  else
+    ok "mcp-exfil-scan stayed within the target (no ~/.claude/skills findings)"
+  fi
+else
+  skip "mcp-exfil-scan.sh not bundled"
+fi
+
 echo "== skill-audit.sh: flags malicious skill =="
 if [ -f "$SCRIPTS/skill-audit.sh" ]; then
   SA="$(bash "$SCRIPTS/skill-audit.sh" "$FIX/malicious-skill/SKILL.md" 2>&1)"

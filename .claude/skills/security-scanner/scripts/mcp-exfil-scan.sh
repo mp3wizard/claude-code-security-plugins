@@ -8,6 +8,13 @@ set -uo pipefail
 SCAN_TARGET="${1:-.}"
 SCAN_TARGET="$(cd "$SCAN_TARGET" 2>/dev/null && pwd || echo "$SCAN_TARGET")"
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+# Scope enforcement (APTS § Scope Enforcement): only audit the global ~/.claude
+# config when the scan target IS that config. Scanning an unrelated project must
+# NOT pull in the user's installed skills/settings (out-of-scope, false positives).
+case "$SCAN_TARGET/" in
+  "$CLAUDE_DIR/"*) AUDIT_GLOBAL=1 ;;
+  *) AUDIT_GLOBAL=0 ;;
+esac
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPORT_DIR="${SCRIPT_DIR}/../reports"
@@ -122,15 +129,16 @@ log "Scan target: $SCAN_TARGET"
 log "Report: $REPORT_FILE"
 log ""
 
-# Collect all MCP config files to scan
+# Collect all MCP config files to scan (target-scoped; global only when AUDIT_GLOBAL=1)
 MCP_CONFIGS=()
-for f in \
-  "$CLAUDE_DIR/settings.json" \
-  "$CLAUDE_DIR/settings.local.json" \
-  "$SCAN_TARGET/.claude/settings.json" \
-  "$SCAN_TARGET/.claude/settings.local.json" \
-  "$SCAN_TARGET/.mcp.json" \
-  "$SCAN_TARGET/mcp.json"; do
+SETTINGS_CANDIDATES=(
+  "$SCAN_TARGET/.claude/settings.json"
+  "$SCAN_TARGET/.claude/settings.local.json"
+  "$SCAN_TARGET/.mcp.json"
+  "$SCAN_TARGET/mcp.json"
+)
+[ "$AUDIT_GLOBAL" = 1 ] && SETTINGS_CANDIDATES+=("$CLAUDE_DIR/settings.json" "$CLAUDE_DIR/settings.local.json")
+for f in "${SETTINGS_CANDIDATES[@]}"; do
   [ -f "$f" ] && MCP_CONFIGS+=("$f")
 done
 
@@ -142,11 +150,13 @@ done < <(find "$SCAN_TARGET" -maxdepth 3 -name ".mcp.json" -o -name "mcp.json" 2
 # Deduplicate
 MCP_CONFIGS=($(printf '%s\n' "${MCP_CONFIGS[@]}" | sort -u))
 
-# Collect skill files
+# Collect skill files (target-scoped; global ~/.claude/skills only when AUDIT_GLOBAL=1)
+SKILL_SEARCH=("$SCAN_TARGET/.claude/skills" "$SCAN_TARGET")
+[ "$AUDIT_GLOBAL" = 1 ] && SKILL_SEARCH=("$CLAUDE_DIR/skills" "${SKILL_SEARCH[@]}")
 SKILL_FILES=()
 while IFS= read -r f; do
   [ -f "$f" ] && SKILL_FILES+=("$f")
-done < <(find "$CLAUDE_DIR/skills" "$SCAN_TARGET/.claude/skills" "$SCAN_TARGET" -maxdepth 4 \( -name "*.skill" -o -name "SKILL.md" \) 2>/dev/null | head -50)
+done < <(find "${SKILL_SEARCH[@]}" -maxdepth 4 \( -name "*.skill" -o -name "SKILL.md" \) 2>/dev/null | head -50)
 SKILL_FILES=($(printf '%s\n' "${SKILL_FILES[@]}" 2>/dev/null | sort -u))
 
 log "MCP configs found: ${#MCP_CONFIGS[@]}"

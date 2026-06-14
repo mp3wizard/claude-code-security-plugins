@@ -210,6 +210,16 @@ Each release applies a prompt optimization pass — adding features while keepin
 | `scripts/apts-audit.sh` *(bundled)* | — | — | — | — | — | 2.0 KB | 3.4 KB |
 | `scripts/aggregate-findings.py` *(bundled, new)* | — | — | — | — | — | — | 7.6 KB |
 
+### v1.7.1 — self-scan bug fixes (audit-log integrity, scope enforcement)
+
+Patch release fixing two bugs the v1.7.0 scanner surfaced when run against this repo's own routine projects:
+
+| Fix | Detail |
+|---|---|
+| `apts-audit.sh run` audit-log corruption | Zero-finding tools wrote a malformed JSON record (`grep -c \|\| echo 0` emitted two values). Now sanitised to a single integer — restores APTS § Auditability. v1.7.0 regression. |
+| `mcp-exfil-scan.sh` scope violation | Always searched global `~/.claude/skills` + settings regardless of target, flagging the user's own installed skills as out-of-scope findings. Global config now audited only when the target IS `~/.claude` (APTS § Scope Enforcement). |
+| Regression tests | Added to `tests/run-tests.sh` for both fixes. |
+
 ### v1.7.0 — skillspector (AI-skill scanner), measured audit log, SARIF aggregation, release-integrity fixes
 
 Tools **12 → 13** (added NVIDIA **skillspector**), plus a round of correctness and release-engineering fixes.

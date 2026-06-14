@@ -10,7 +10,7 @@
     {
       "name": "claude-code-security-plugins",
       "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan, mcp-exfil-scan, skillspector) and comprehensive static security review agent for Claude Code",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "author": { "name": "pisek @ casedone" },
       "source": "./",
       "category": "security",
