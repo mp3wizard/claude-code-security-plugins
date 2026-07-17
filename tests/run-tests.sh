@@ -136,7 +136,7 @@ echo "== secret-scan hook: denies planted secret, allows clean, fails open (regr
 if have gitleaks && have python3; then
   # Built at runtime (not a literal token in source) — avoids tripping GitHub
   # push-protection / secret scanners on this repo's own test suite.
-  GH="ghp_$(head -c 27 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 36)"
+  GH="ghp_$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 36)"
   DS="$(python3 -c "import json;print(json.dumps({'tool_name':'Write','tool_input':{'file_path':'c.py','content':'t=\"$GH\"'}}))" | bash "$HOOKS/secret-scan-pretooluse.sh" 2>/dev/null)"
   echo "$DS" | grep -q '"permissionDecision": "deny"'      && ok "secret-scan denies a planted secret"  || no "secret-scan failed to deny a planted secret"
   AS="$(printf '%s' '{"tool_name":"Write","tool_input":{"file_path":"c.py","content":"def f():\n    return 1\n"}}' | bash "$HOOKS/secret-scan-pretooluse.sh" 2>/dev/null)"
