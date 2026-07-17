@@ -5,7 +5,7 @@
   "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan, mcp-exfil-scan, skillspector) and comprehensive static security review agent for Claude Code · OWASP APTS-aligned (Auditability, Manipulation Resistance, Reporting, Scope Enforcement). Ships PreToolUse secret-scan + catastrophic-command guard hooks and a /security-scan command.",
   "version": "1.8.0",
   "author": {
-    "name": "pisek @ casedone"
+    "name": "mp3wizard"
   },
   "homepage": "https://github.com/mp3wizard/claude-code-security-plugins",
   "repository": "https://github.com/mp3wizard/claude-code-security-plugins",
