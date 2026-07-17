@@ -38,11 +38,18 @@ rm -f "$ROOT/security-scanner.skill"
 echo "==> Building claude-code-security-plugins.zip"
 PL="$STAGE/claude-code-security-plugins"
 PLSK="$PL/.claude/skills/security-scanner"
-mkdir -p "$PLSK/scripts" "$PLSK/reports" "$PL/.claude/agents" "$PL/.claude-plugin"
+mkdir -p "$PLSK/scripts" "$PLSK/reports" "$PL/agents" "$PL/.claude-plugin"
 cp "$SKILL_SRC/SKILL.md" "$PLSK/SKILL.md"
 for f in $BUNDLED SHA256SUMS; do cp "$SCRIPTS/$f" "$PLSK/scripts/$f"; done
-cp .claude/agents/security-analysis.md "$PL/.claude/agents/"
+# Agent lives at the canonical root agents/ dir — the explicit `agents` manifest
+# field does not register in current Claude Code; default discovery does.
+cp agents/security-analysis.md "$PL/agents/"
 cp .claude-plugin/plugin.json .claude-plugin/marketplace.json "$PL/.claude-plugin/"
+# Guardrail hooks + slash command (v1.8.0+). Ship executable.
+mkdir -p "$PL/hooks" "$PL/commands"
+cp hooks/hooks.json "$PL/hooks/"
+cp hooks/*.sh "$PL/hooks/" && chmod +x "$PL/hooks/"*.sh
+cp commands/*.md "$PL/commands/"
 # Hard exclusions — never ship machine-local config, OS cruft, or generated reports.
 find "$PL" \( -name '.DS_Store' -o -name 'settings.local.json' \) -delete
 rm -f "$ROOT/claude-code-security-plugins.zip"

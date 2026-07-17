@@ -16,3 +16,7 @@ Desktop.ini
 
 # Generated scan reports
 .claude/skills/security-scanner/reports/*.txt
+
+# Build artifacts (regenerate via build-dist.sh; ship as GitHub Release assets)
+/security-scanner.skill
+/claude-code-security-plugins.zip

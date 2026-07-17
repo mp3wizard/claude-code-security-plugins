@@ -10,8 +10,12 @@ This material is a part of a 15-minute short talk at [Claude Code Thailand Meetu
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `security-scanner` | Skill | Orchestrates Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, CodeQL (GitHub repos), mcps-audit (MCP projects), OSV-Scanner (SCA), mcp-scan (opt-in MCP security), security-audit (Claude config audit), skill-security-auditor (skill/MCP deep analysis), mcp-exfil-scan (MCP data exfiltration detection), and skillspector (NVIDIA AI-skill scanner) to produce a structured scan report |
+| `security-scanner` | Skill | Orchestrates Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, CodeQL (GitHub repos), mcps-audit (MCP projects), OSV-Scanner (SCA), mcp-scan (opt-in MCP security), security-audit (Claude config + **rule-file injection / hidden-Unicode** audit), skill-security-auditor (skill/MCP deep analysis), mcp-exfil-scan (MCP data exfiltration detection), and skillspector (NVIDIA AI-skill scanner) to produce a structured scan report |
 | `security-analysis` | Agent | Senior AppSec engineer that runs the scanner, then performs deep manual review across 12 vulnerability categories |
+| `/security-scan` | Command | Explicit slash-command entry point that runs the `security-scanner` skill against a path (defaults to cwd) |
+| secret-scan hook | Hook (PreToolUse) | Runs Gitleaks on pending `Write`/`Edit`/`MultiEdit` content and **blocks** the write if a hardcoded secret is detected. Fails open. Toggle: `secret_scan` |
+| bash-guard hook | Hook (PreToolUse) | Blocks a narrow set of catastrophic Bash commands (`rm -rf /`, `mkfs`, `dd` to a raw device, fork bombs, pipe-to-shell). Fails open. Toggle: `bash_guard` |
+| preflight hook | Hook (SessionStart) | Reports which core scanner CLIs are installed. Never blocks |
 
 ## Prerequisites
 
@@ -52,6 +56,8 @@ brew install osv-scanner
 
 > **What's bundled:** `security-audit` and `skill-security-auditor` scripts are packed inside both distribution files — no extra `git clone` required.
 
+> **⚠️ Installs disabled (v1.8.0+):** this plugin sets `defaultEnabled: false` — it shells out to external CLIs and adds blocking PreToolUse hooks, so it does **not** auto-enable on install. Turn it on with `claude plugin enable claude-code-security-plugins` (or the `/plugin` UI). Requires Claude Code **v2.1.154+** for `defaultEnabled` and the guardrail hooks; older versions ignore the field and enable on install. Disable either hook without disabling the plugin via the `secret_scan` / `bash_guard` config options.
+
 ### Option 1 — Plugin ZIP (skill + agent, recommended)
 
 Download `claude-code-security-plugins.zip` from the [Releases](https://github.com/mp3wizard/claude-code-security-plugins/releases) page, then:
@@ -67,7 +73,7 @@ claude --plugin-dir ./claude-code-security-plugins
 claude plugin install ./claude-code-security-plugins
 ```
 
-Includes: `security-scanner` skill + `security-analysis` agent + bundled audit scripts (`scripts/config-audit.py`, `scripts/skill-audit.sh`, `scripts/mcp-exfil-scan.sh`).
+Includes: `security-scanner` skill + `security-analysis` agent + `/security-scan` command + guardrail hooks (`hooks/`) + bundled audit scripts (`scripts/config-audit.py`, `scripts/skill-audit.sh`, `scripts/mcp-exfil-scan.sh`).
 
 **Plugin structure inside ZIP:**
 ```
@@ -83,7 +89,14 @@ claude-code-security-plugins/
 │   │   │   ├── aggregate-findings.py # SARIF merge + dedup + CI gate (bundled)
 │   │   │   └── SHA256SUMS            # integrity manifest, verified at pre-flight
 │   │   └── reports/
-│   └── agents/security-analysis.md
+├── agents/security-analysis.md
+├── hooks/
+│   ├── hooks.json
+│   ├── preflight-sessionstart.sh   # SessionStart: report installed CLIs
+│   ├── secret-scan-pretooluse.sh   # PreToolUse: block secret-leaking writes
+│   └── bash-guard-pretooluse.sh    # PreToolUse: block catastrophic commands
+├── commands/
+│   └── security-scan.md            # /security-scan entry point
 └── .claude-plugin/
     ├── plugin.json
     └── marketplace.json
@@ -115,6 +128,33 @@ claude plugin install claude-code-security-plugins@1.7.0
 
 > **Security note:** Always install from a tagged release rather than HEAD. Check the [CHANGELOG](CHANGELOG.md) before upgrading.
 
+### Option 4 — Install on OpenAI Codex CLI
+
+The same source tree installs on **Codex CLI** (codex-cli 0.144+). Codex reads the `.codex-plugin/plugin.json` manifest and the `.agents/plugins/marketplace.json` marketplace at the repo root; the `security-scanner` skill and its scripts are shared verbatim with the Claude Code build.
+
+```bash
+# From GitHub (Codex clones the repo and reads .agents/plugins/marketplace.json):
+codex plugin marketplace add https://github.com/mp3wizard/claude-code-security-plugins
+# …or from a local clone:
+codex plugin marketplace add /path/to/claude-code-security-plugins
+
+codex plugin add claude-code-security-plugins@casedone-security
+codex plugin list        # → installed, enabled
+```
+
+**What maps across:**
+
+| Component | Claude Code | Codex |
+|-----------|-------------|-------|
+| `security-scanner` skill + scripts | `.claude/skills/` (shared) | same dir, discovered via `.codex-plugin` `skills` |
+| Guardrail hooks | `hooks/hooks.json` (`PreToolUse`) | `codex/hooks.json` (`PreToolUse`, matcher includes `apply_patch`) — same scripts, identical `permissionDecision:"deny"` contract, reached via the `CLAUDE_PLUGIN_ROOT` alias Codex sets |
+| `security-analysis` agent, `/security-scan` command | yes | Claude-only (the skill is the Codex entry point) |
+
+**Codex notes:**
+- **Hook trust:** Codex requires plugin hooks to be *trusted* on first use before they run (or `--dangerously-bypass-hook-trust` for vetted automation). The three hooks fail open, same as on Claude Code.
+- **Remove any older standalone skill** at `~/.codex/skills/security-scanner/` first — it will otherwise shadow/duplicate the plugin's skill.
+- The Codex local-marketplace source copies the whole repo into its cache (including `tests/`); only `./.claude/skills/` is scanned for skills, so the test fixtures never load as skills.
+
 ## Usage
 
 ### Run the automated scanner only
@@ -124,6 +164,21 @@ claude plugin install claude-code-security-plugins@1.7.0
 ```
 
 Runs all available tools against your codebase and produces a structured markdown report with findings, cross-tool observations, and coverage gaps.
+
+Or use the slash command (defaults to the current directory; pass a path to scope it):
+
+```
+/security-scan
+/security-scan ./services/api
+```
+
+### Guardrail hooks (opt-in, active while the plugin is enabled)
+
+The plugin registers three hooks (all **fail open** — a missing tool or scanner error never wedges the session):
+
+- **secret-scan** (`PreToolUse` on `Write`/`Edit`/`MultiEdit`/`NotebookEdit`) — scans pending content with Gitleaks and **blocks** the write if it introduces a hardcoded secret. Disable with the `secret_scan` config option.
+- **bash-guard** (`PreToolUse` on `Bash`) — blocks a narrow, near-zero-false-positive set of catastrophic commands (`rm -rf /`|`~`, `mkfs`, `dd of=/dev/…`, fork bombs, `curl|wget … | sh`). Disable with the `bash_guard` config option.
+- **preflight** (`SessionStart`) — reports which core scanner CLIs are installed.
 
 ### Run a full security review
 

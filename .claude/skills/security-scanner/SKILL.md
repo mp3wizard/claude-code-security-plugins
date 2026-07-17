@@ -156,7 +156,7 @@ Lockfiles present → also: `osv-scanner scan -L <lockfile> 2>&1`
 Bundled scripts live at `$SKILL_DIR/scripts/`:
 
 **4i. security-audit:** `python3 $SKILL_DIR/scripts/config-audit.py <path> 2>&1`
-Scans `~/.claude/settings.json` hooks, MCP servers, skills/plugins, `.claude/` configs, CLAUDE.md safety-bypass. Outputs CRITICAL/HIGH/MEDIUM/LOW.
+Scans `~/.claude/settings.json` hooks, MCP servers, skills/plugins, `.claude/` configs, CLAUDE.md safety-bypass. Also scans agent **rule/instruction files** (`.cursorrules`, `.windsurfrules`, `.clinerules`, `AGENTS.md`, `.github/copilot-instructions.md`, `.cursor/rules/`, `.github/instructions/`) for prompt-injection instructions and **hidden-Unicode injection** (zero-width, bidi overrides, tag chars) — the class behind the 2025 Cursor/Copilot rule-file CVEs. Outputs CRITICAL/HIGH/MEDIUM/LOW.
 
 **4j. skill-security-auditor:** Scan all `.skill`/`SKILL.md`:
 ```bash
@@ -222,6 +222,11 @@ Bundled scripts failed → "Claude config/skill/MCP exfil audit incomplete — c
 ### APTS Audit Log
 <apts-audit.sh finalize output>
 ```
+
+## Optional complements & roadmap
+
+- **SBOM (software bill of materials):** Trivy can emit a CycloneDX SBOM for the target — `trivy fs --format cyclonedx --output sbom.cdx.json <path>`. This is a *software* SBOM (dependencies), useful for SCA/provenance. A true **AI-BOM** (model + dataset provenance, OWASP AIBOM / CycloneDX 1.7 ML-BOM) is **not** produced by Trivy and is not yet covered here — roadmap item; do not relabel the software SBOM as an AI-BOM.
+- **Runtime prompt-injection scanning (Sunglasses):** [Sunglasses](https://sunglasses.dev) (`pip install sunglasses`) is a runtime library (`engine.scan(text)`, ~1k patterns for prompt injection / MCP tool poisoning / cred exfil). It scans *live* text before a model/tool call, so it is **not** a static path scanner and is intentionally **not** part of the Step 4 static flow. It belongs at the hook layer (scan tool output/prompts) — an optional complement to skillspector + mcp-exfil-scan, not a replacement.
 
 ## Operational Rules
 

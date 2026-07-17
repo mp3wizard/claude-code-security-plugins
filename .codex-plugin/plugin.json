@@ -1,0 +1,19 @@
+{
+  "name": "claude-code-security-plugins",
+  "version": "1.8.0",
+  "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, OSV-Scanner, mcp-scan, mcp-exfil-scan, skillspector) with an APTS-aligned structured report. Shares one source tree with the Claude Code plugin.",
+  "author": {
+    "name": "pisek @ casedone"
+  },
+  "skills": "./.claude/skills/",
+  "hooks": "./codex/hooks.json",
+  "interface": {
+    "displayName": "Claude Code Security Plugins",
+    "shortDescription": "13-tool security scanner + AppSec review.",
+    "longDescription": "Runs Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, OSV-Scanner and Claude/MCP/skill audits against a codebase and assembles one OWASP APTS-aligned markdown report. The security-scanner skill and its bundled scripts are identical to the Claude Code plugin; guardrail hooks install separately to ~/.codex/hooks.json (see codex/install-codex-hooks.sh).",
+    "developerName": "pisek @ casedone",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Run a security scan of this codebase."
+  }
+}

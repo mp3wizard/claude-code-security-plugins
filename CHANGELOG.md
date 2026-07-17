@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.0] - 2026-07-17
+
+### Added
+
+- **PreToolUse secret-scan hook** (`hooks/secret-scan-pretooluse.sh`, matcher `Write|Edit|MultiEdit|NotebookEdit`) — runs Gitleaks on the *pending* write content and **blocks** the write (exit 0 + `permissionDecision:"deny"`) when a hardcoded secret is detected, with a **redacted** reason (rule + line, never the secret value). Reads content from the real tool-schema keys (`content`, `new_string`, `edits[].new_string`, `new_source`). **Fails open** on every error path (no python3 / no gitleaks / parse error / scanner error) so it can never wedge the session.
+- **PreToolUse bash-guard hook** (`hooks/bash-guard-pretooluse.sh`, matcher `Bash`) — denies a deliberately **narrow, near-zero-false-positive** set of catastrophic commands (`rm -rf /`|`~`|`$HOME`, `mkfs`, `dd of=/dev/…`, fork bombs, `curl|wget … | sh`, recursive `chmod 777 /`). Everything else is allowed; fails open.
+- **SessionStart preflight hook** (`hooks/preflight-sessionstart.sh`) — reports which core scanner CLIs are installed via `hookSpecificOutput.additionalContext`. Never blocks.
+- **`hooks/hooks.json`** wiring the three hooks (shape verified against the official `security-guidance` plugin).
+- **`/security-scan` slash command** (`commands/security-scan.md`) — explicit user entry point that invokes the `security-scanner` skill (skills alone are model-invoked only).
+- **`userConfig` toggles** — `secret_scan` and `bash_guard` (both default `true`), exported to the hooks as `CLAUDE_PLUGIN_OPTION_SECRET_SCAN` / `CLAUDE_PLUGIN_OPTION_BASH_GUARD`, letting users disable either blocking hook without disabling the whole plugin.
+- **Rule-file injection + hidden-Unicode detection** in `config-audit.py` — now scans agent rule/instruction files (`.cursorrules`, `.windsurfrules`, `.clinerules`, `AGENTS.md`, `.github/copilot-instructions.md`, `.cursor/rules/`, `.github/instructions/`) for prompt-injection instructions and invisible/bidi/tag-character injection (the class behind the 2025 Cursor/Copilot rule-file CVEs).
+- **SBOM + Sunglasses guidance** in `SKILL.md` — how to emit a CycloneDX software SBOM via Trivy, with AI-BOM (OWASP AIBOM / ML-BOM) marked explicitly as **roadmap, not yet produced**; and Sunglasses documented as an optional **runtime/hook-layer** prompt-injection complement, not a static Step-4 tool.
+- **Manifest enrichment** — `plugin.json` gains `$schema` (schemastore, verified 200), `displayName`, `homepage`, and `defaultEnabled: false` (the plugin shells out to 13 external CLIs and adds blocking hooks, so it now **installs disabled** and the user opts in). `marketplace.json` gains a top-level `version`.
+- **Six regression tests** in `tests/run-tests.sh` covering hidden-unicode/rule-file detection, hooks.json validity, bash-guard deny/allow/toggle, and secret-scan deny/allow/fail-open.
+- **OpenAI Codex CLI support (single source tree)** — the plugin now also installs on Codex CLI (codex-cli 0.144+):
+  - `.codex-plugin/plugin.json` (Codex manifest, `interface` block + `skills: "./.claude/skills/"` + `hooks: "./codex/hooks.json"`) and `.agents/plugins/marketplace.json` (Codex marketplace, `source.path: "."` → repo root is the plugin). Verified end-to-end with `codex plugin marketplace add` → `codex plugin add` → `codex plugin list` (installed, enabled) and by running a bundled script from the Codex plugin cache.
+  - `codex/hooks.json` maps the guardrails to Codex's `PreToolUse` event (matcher includes `apply_patch`, Codex's edit tool). Codex's deny contract is identical to Claude Code's (`hookSpecificOutput.permissionDecision:"deny"` or exit 2), so the **same `hooks/*.sh` scripts run on both hosts**, reached via the `CLAUDE_PLUGIN_ROOT` alias Codex sets.
+  - `secret-scan-pretooluse.sh` now also extracts content from Codex `apply_patch` (`input`/`patch`), with a whole-`tool_input` fallback — verified to block a secret planted in an `apply_patch` body and to allow a clean patch.
+  - The `security-analysis` agent and `/security-scan` command stay Claude-only (the skill is the Codex entry point).
+
+### Changed
+
+- **`defaultEnabled: false`** — the plugin no longer auto-enables on install (requires Claude Code v2.1.154+; earlier versions ignore the field and enable on install). Enable with `claude plugin enable claude-code-security-plugins` or the `/plugin` UI.
+- **`build-dist.sh`** now packages `hooks/` and `commands/` into the plugin ZIP (executable hook scripts) and ships the agent at the root `agents/` dir.
+
+### Fixed
+
+- **`security-analysis` agent was never discovered** — it shipped under `.claude/agents/` with no `agents` manifest field, so default agent discovery (root `agents/`) never found it, and an explicit `agents` path in `plugin.json` did **not** register it either (verified against `claude plugin details` in current Claude Code). Moved the agent to the canonical root `agents/security-analysis.md` and rely on default discovery; `claude plugin details` now reports it. This was a latent bug in every prior release.
+
+### Notes
+
+- No `marketplace.json` `$schema` was added — the schemastore marketplace-manifest URL 404s (no schema published); a fabricated URL was deliberately avoided.
+- No `renames` entry was added — nothing is being renamed; `renames` is the documented mechanism to add *when* a future rename/removal happens.
+- `SHA256SUMS` integrity coverage remains scoped to the five bundled **skill** scripts (its documented purpose); hook scripts are not integrity-checked at hook-run time.
+
 ## [1.7.1] - 2026-06-14
 
 ### Fixed

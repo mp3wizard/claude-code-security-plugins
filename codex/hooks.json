@@ -1,0 +1,38 @@
+{
+  "description": "Codex-format guardrail hooks — same scripts as the Claude Code plugin (hooks/*.sh), reached via the CLAUDE_PLUGIN_ROOT alias Codex sets. Codex has an identical PreToolUse deny contract (hookSpecificOutput.permissionDecision=deny). All hooks fail open.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/preflight-sessionstart.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "apply_patch|Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/secret-scan-pretooluse.sh\"",
+            "timeout": 20
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/bash-guard-pretooluse.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

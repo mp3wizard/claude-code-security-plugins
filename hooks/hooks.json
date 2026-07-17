@@ -1,0 +1,38 @@
+{
+  "description": "Security guardrail hooks — SessionStart tool-availability check, PreToolUse secret-scan blocker on writes, PreToolUse catastrophic-command guard on Bash. All hooks FAIL OPEN (never wedge the session on a missing tool or scanner error).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/preflight-sessionstart.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/secret-scan-pretooluse.sh\"",
+            "timeout": 20
+          }
+        ],
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/bash-guard-pretooluse.sh\"",
+            "timeout": 10
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ]
+  }
+}

@@ -65,6 +65,65 @@ CLAUDE_MD_DANGERS = [
     (r'trust.*all', "trust-all instruction"),
 ]
 
+# Agent rule / instruction files. These are ingested verbatim into an agent's
+# context, so a malicious one is a prompt-injection vector — the class behind
+# the 2025 Cursor / GitHub Copilot "rule file" CVEs. Scanned with the same
+# CLAUDE.md danger patterns plus hidden-unicode detection.
+RULE_FILE_NAMES = [
+    ".cursorrules",
+    ".windsurfrules",
+    ".clinerules",
+    ".aider.conf.yml",
+    "AGENTS.md",
+    "AGENT.md",
+    "GEMINI.md",
+    ".github/copilot-instructions.md",
+]
+RULE_FILE_DIRS = [".cursor/rules", ".clinerules", ".github/instructions"]
+
+# Invisible / control characters used to smuggle instructions past human review
+# (zero-width, bidirectional overrides, and Unicode tag characters). Any of
+# these in an instruction file is a hidden-injection red flag.
+HIDDEN_UNICODE = {
+    "​": "zero-width space",
+    "‌": "zero-width non-joiner",
+    "‍": "zero-width joiner",
+    "⁠": "word joiner",
+    "﻿": "zero-width no-break space (BOM)",
+    "­": "soft hyphen",
+    "‪": "bidi LTR embedding",
+    "‫": "bidi RTL embedding",
+    "‬": "bidi pop directional formatting",
+    "‭": "bidi LTR override",
+    "‮": "bidi RTL override",
+    "⁦": "bidi LTR isolate",
+    "⁧": "bidi RTL isolate",
+    "⁨": "bidi first-strong isolate",
+    "⁩": "bidi pop directional isolate",
+}
+
+
+def scan_hidden_unicode(content, location):
+    """Flag invisible / bidi-control / tag characters — hidden-instruction vector."""
+    findings = []
+    seen = {}
+    for i, ch in enumerate(content):
+        name = None
+        if ch in HIDDEN_UNICODE:
+            name = HIDDEN_UNICODE[ch]
+        elif 0xE0000 <= ord(ch) <= 0xE007F:
+            name = "Unicode tag character (invisible)"
+        if name:
+            seen.setdefault(name, []).append(i)
+    for name, positions in seen.items():
+        line = content.count("\n", 0, positions[0]) + 1
+        findings.append(Finding(
+            "HIGH", location,
+            f"Hidden Unicode ({name}) x{len(positions)} — possible invisible instruction injection",
+            f"first at line {line}, offset {positions[0]} (U+{ord(content[positions[0]]):04X})"
+        ))
+    return findings
+
 
 # Paths to skip (the scanner itself, and known safe skill files)
 SKIP_PATHS = {
@@ -228,6 +287,9 @@ def scan_claude_md(path):
                 "MEDIUM", str(path), f"Suspicious instruction: {desc}", match.strip()
             ))
 
+    # Hidden-unicode injection (rule-file attack vector)
+    findings.extend(scan_hidden_unicode(content, str(path)))
+
     # Check for hidden commands in CLAUDE.md
     findings.extend(check_command(content, str(path)))
 
@@ -352,6 +414,18 @@ def scan_project(project_dir):
     ]:
         if claude_md.exists():
             findings.extend(scan_claude_md(claude_md))
+
+    # Agent rule / instruction files — prompt-injection surface (rule-file CVEs)
+    for name in RULE_FILE_NAMES:
+        rf = project_dir / name
+        if rf.exists() and rf.is_file():
+            findings.extend(scan_claude_md(rf))
+    for d in RULE_FILE_DIRS:
+        rd = project_dir / d
+        if rd.is_dir():
+            for rf in rd.rglob("*"):
+                if rf.is_file() and rf.suffix in {".md", ".mdc", ".txt", ""}:
+                    findings.extend(scan_claude_md(rf))
 
     return findings
 
