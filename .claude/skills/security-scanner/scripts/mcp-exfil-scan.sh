@@ -148,7 +148,7 @@ while IFS= read -r f; do
 done < <(find "$SCAN_TARGET" -maxdepth 3 -name ".mcp.json" -o -name "mcp.json" 2>/dev/null | head -20)
 
 # Deduplicate
-MCP_CONFIGS=($(printf '%s\n' "${MCP_CONFIGS[@]}" | sort -u))
+MCP_CONFIGS=($(printf '%s\n' ${MCP_CONFIGS[@]+"${MCP_CONFIGS[@]}"} | sort -u))
 
 # Collect skill files (target-scoped; global ~/.claude/skills only when AUDIT_GLOBAL=1)
 SKILL_SEARCH=("$SCAN_TARGET/.claude/skills" "$SCAN_TARGET")
@@ -157,7 +157,7 @@ SKILL_FILES=()
 while IFS= read -r f; do
   [ -f "$f" ] && SKILL_FILES+=("$f")
 done < <(find "${SKILL_SEARCH[@]}" -maxdepth 4 \( -name "*.skill" -o -name "SKILL.md" \) 2>/dev/null | head -50)
-SKILL_FILES=($(printf '%s\n' "${SKILL_FILES[@]}" 2>/dev/null | sort -u))
+SKILL_FILES=($(printf '%s\n' ${SKILL_FILES[@]+"${SKILL_FILES[@]}"} 2>/dev/null | sort -u))
 
 log "MCP configs found: ${#MCP_CONFIGS[@]}"
 log "Skill files found: ${#SKILL_FILES[@]}"
@@ -182,7 +182,7 @@ POISONING_PATTERNS=(
 PHASE_A_FOUND=0
 
 # Scan MCP config files for tool descriptions and args that contain poisoning
-for config in "${MCP_CONFIGS[@]}"; do
+for config in ${MCP_CONFIGS[@]+"${MCP_CONFIGS[@]}"}; do
   if [ -f "$config" ]; then
     content=$(cat "$config" 2>/dev/null || true)
     for pattern in "${POISONING_PATTERNS[@]}"; do
@@ -197,7 +197,7 @@ for config in "${MCP_CONFIGS[@]}"; do
 done
 
 # Scan skill files for poisoning patterns targeting MCP tools
-for skill in "${SKILL_FILES[@]}"; do
+for skill in ${SKILL_FILES[@]+"${SKILL_FILES[@]}"}; do
   if [ -f "$skill" ]; then
     content=$(cat "$skill" 2>/dev/null || true)
     for pattern in "${POISONING_PATTERNS[@]}"; do
@@ -236,7 +236,7 @@ OUTBOUND_PATTERNS=(
 # Proxy/tunnel patterns
 TUNNEL_PATTERNS="ngrok|cloudflare.*tunnel|localtunnel|bore|serveo|localhost\.run|telebit|pagekite"
 
-for config in "${MCP_CONFIGS[@]}"; do
+for config in ${MCP_CONFIGS[@]+"${MCP_CONFIGS[@]}"}; do
   [ -f "$config" ] || continue
 
   # Get list of MCP server names
@@ -325,7 +325,7 @@ MCP_TOOL_COMBOS=(
   "mcp__.*Bash|Bash.*mcp__"
 )
 
-for skill in "${SKILL_FILES[@]}"; do
+for skill in ${SKILL_FILES[@]+"${SKILL_FILES[@]}"}; do
   [ -f "$skill" ] || continue
   content=$(cat "$skill" 2>/dev/null || true)
 
@@ -400,9 +400,9 @@ ENCODED_PATTERNS=(
   "printf.*\\\\x.*http"
 )
 
-ALL_FILES=("${MCP_CONFIGS[@]}" "${SKILL_FILES[@]}")
+ALL_FILES=(${MCP_CONFIGS[@]+"${MCP_CONFIGS[@]}"} ${SKILL_FILES[@]+"${SKILL_FILES[@]}"})
 
-for file in "${ALL_FILES[@]}"; do
+for file in ${ALL_FILES[@]+"${ALL_FILES[@]}"}; do
   [ -f "$file" ] || continue
   content=$(cat "$file" 2>/dev/null || true)
 
@@ -452,7 +452,7 @@ PHASE_E_FOUND=0
 
 SENSITIVE_ENV_PATTERN="(API_KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL|PRIVATE_KEY|AUTH|SESSION|ACCESS_KEY|MASTER_KEY|ENCRYPTION)"
 
-for config in "${MCP_CONFIGS[@]}"; do
+for config in ${MCP_CONFIGS[@]+"${MCP_CONFIGS[@]}"}; do
   [ -f "$config" ] || continue
 
   servers=$(json_get "$config" ".mcpServers | keys[]" 2>/dev/null || true)
@@ -491,7 +491,7 @@ for config in "${MCP_CONFIGS[@]}"; do
 done
 
 # Check skills that reference env vars + have network tools
-for skill in "${SKILL_FILES[@]}"; do
+for skill in ${SKILL_FILES[@]+"${SKILL_FILES[@]}"}; do
   [ -f "$skill" ] || continue
   content=$(cat "$skill" 2>/dev/null || true)
 
@@ -517,7 +517,7 @@ PHASE_F_FOUND=0
 TRUSTED_ORGS="anthropics|anthropic|openai|microsoft|google|modelcontextprotocol|cloudflare|vercel|supabase|stripe|hashicorp|elastic|grafana|mozilla|figma|linear|notion|slack|sentry|datadog"
 
 # Check MCP server source packages (npx, uvx, etc.)
-for config in "${MCP_CONFIGS[@]}"; do
+for config in ${MCP_CONFIGS[@]+"${MCP_CONFIGS[@]}"}; do
   [ -f "$config" ] || continue
 
   servers=$(json_get "$config" ".mcpServers | keys[]" 2>/dev/null || true)
@@ -595,7 +595,7 @@ for config in "${MCP_CONFIGS[@]}"; do
 done
 
 # Check skill files for source attribution
-for skill in "${SKILL_FILES[@]}"; do
+for skill in ${SKILL_FILES[@]+"${SKILL_FILES[@]}"}; do
   [ -f "$skill" ] || continue
   content=$(cat "$skill" 2>/dev/null || true)
 

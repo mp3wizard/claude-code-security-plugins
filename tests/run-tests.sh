@@ -156,6 +156,30 @@ else
   skip "no jq/python3 — preflight emits plain text (acceptable)"
 fi
 
+echo "== mcp-exfil-scan: no unbound-array crash on MCP-free targets =="
+# Regression: under bash 3.2 (macOS default) + `set -u`, expanding an empty
+# array as "${ARR[@]}" aborts. Any target without MCP configs hit this at the
+# MCP_CONFIGS dedup line and the scan died before reporting.
+EXFIL_TMP="$(mktemp -d)"
+EX_OUT="$(bash "$SCRIPTS/mcp-exfil-scan.sh" "$EXFIL_TMP" 2>&1)"
+echo "$EX_OUT" | grep -q 'unbound variable' \
+  && no "mcp-exfil-scan crashed with unbound variable on an empty target" \
+  || ok "mcp-exfil-scan survives a target with zero MCP configs"
+echo "$EX_OUT" | grep -q 'MCP configs found: 0' \
+  && ok "mcp-exfil-scan reports zero MCP configs cleanly" \
+  || no "mcp-exfil-scan did not report MCP config count"
+
+# Non-empty path must still work: a skill file present, still no MCP config.
+mkdir -p "$EXFIL_TMP/withskill" && printf '%s\n' '# Test Skill' > "$EXFIL_TMP/withskill/SKILL.md"
+EX_OUT2="$(bash "$SCRIPTS/mcp-exfil-scan.sh" "$EXFIL_TMP/withskill" 2>&1)"
+echo "$EX_OUT2" | grep -q 'unbound variable' \
+  && no "mcp-exfil-scan crashed on a skill-only target" \
+  || ok "mcp-exfil-scan handles a skill-only target"
+echo "$EX_OUT2" | grep -q 'Skill files found: 1' \
+  && ok "mcp-exfil-scan still discovers skill files after the fix" \
+  || no "mcp-exfil-scan lost skill-file discovery"
+rm -rf "$EXFIL_TMP"
+
 echo
 echo "==================== RESULT ===================="
 echo "PASS=$PASS  FAIL=$FAIL  SKIP=$SKIP"
