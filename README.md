@@ -88,6 +88,7 @@ claude-code-security-plugins/
 │   │   │   ├── skill-audit.sh        # Skill/MCP deep analysis (bundled)
 │   │   │   ├── mcp-exfil-scan.sh     # MCP exfiltration detection (bundled)
 │   │   │   ├── apts-audit.sh         # APTS measured audit log (bundled)
+│   │   │   ├── jev-annotate.py       # OPT-IN Jev triage / scope / claim verify (network)
 │   │   │   ├── aggregate-findings.py # SARIF merge + dedup + CI gate (bundled)
 │   │   │   └── SHA256SUMS            # integrity manifest, verified at pre-flight
 │   │   └── reports/
@@ -211,6 +212,18 @@ The `security-analysis` agent will automatically:
 ```
 
 Runs the `security-analysis` agent (which runs the scanner as Phase 0, then the 12-category manual review and a Section D deep-audit recommendation), shows the report, then asks whether to run `deep-audit` with the recommended profile and scope. The agent uses `deep-audit` in guidance mode only — Claude Code subagents cannot spawn subagents, so the full six-phase run always happens in the main session.
+
+### Optional: Jev annotations (`jev-annotate.py`, opt-in)
+
+[TypeSafe Jev](https://docs.typesafe.ai) returns typed judgments with probabilities. Three uses, all **off by default** and **annotation-only** (Jev never drops a finding, changes severity, or touches the `--fail-on` CI gate):
+
+| Subcommand | Where | What it adds |
+|---|---|---|
+| `triage` | scanner step 5a-jev | Labels each SAST/skill finding `real_issue` / `test_or_fixture` / `documentation_or_prose` / `benign_usage` from its ±15-line snippet |
+| `scope` | `/full-audit` step 3 | Ranks the agent's Section D areas by deep-audit priority (reorders only) |
+| `verify` | `/full-audit` steps 2 and 4 | Checks each agent finding and each deep-audit trace/evidence item against the cited source: `verified` / `contradicted` / `unsupported`, plus code-only `invalid_location` for a missing file, a path outside the target, or a line past EOF |
+
+Privacy: nothing leaves the machine without `--send` (otherwise it prints the exact payloads). Secrets and SCA findings are never sent; every payload is gitleaks-scanned first and dropped if flagged, and if gitleaks is missing nothing is sent. Needs `TYPESAFE_API_KEY` (or `~/.config/typesafe/env`). `/full-audit` asks for the opt-in once, up front. Thresholds are uncalibrated: treat a low `p_real` as "look first at the others", not "ignore".
 
 ### Run a deep manual audit (`deep-audit`)
 

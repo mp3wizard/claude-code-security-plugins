@@ -18,7 +18,7 @@ Static security review → dual-audience report with actionable findings at spec
 
 ## Phase 0 — Automated Scan
 
-Invoke `security-scanner` skill. Its output is the Phase 0 baseline — cross-reference in Phase 2, cite in Phase 4. Pre-flight abort → note the gap, proceed manual-only.
+Invoke `security-scanner` skill. Run its Jev triage step (5a-jev) only if the caller passed explicit Jev opt-in; otherwise skip it and say so in Coverage Disclosure. Its output is the Phase 0 baseline — cross-reference in Phase 2, cite in Phase 4. Pre-flight abort → note the gap, proceed manual-only.
 
 ## Phase 1 — Codebase Reconnaissance
 

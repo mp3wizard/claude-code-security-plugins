@@ -14,7 +14,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE:-$0}")" && pwd)"
 cd "$ROOT"
 SKILL_SRC=".claude/skills/security-scanner"
 SCRIPTS="$SKILL_SRC/scripts"
-BUNDLED="config-audit.py skill-audit.sh mcp-exfil-scan.sh apts-audit.sh aggregate-findings.py"
+BUNDLED="config-audit.py skill-audit.sh mcp-exfil-scan.sh apts-audit.sh aggregate-findings.py jev-annotate.py"
 
 DEEP_SRC=".claude/skills/deep-audit"
 DEEP_SUMMED="validate-findings.cjs validate-coverage-ledger.cjs report-schema.json"

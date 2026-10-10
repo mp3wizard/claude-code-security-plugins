@@ -180,6 +180,107 @@ echo "$EX_OUT2" | grep -q 'Skill files found: 1' \
   || no "mcp-exfil-scan lost skill-file discovery"
 rm -rf "$EXFIL_TMP"
 
+echo "== jev-annotate.py: offline guarantees (no network) =="
+JA="$SCRIPTS/jev-annotate.py"
+JT="$(mktemp -d)"; mkdir -p "$JT/target"
+cp "$FIX/vuln_sample.py" "$JT/target/app.py"
+# Secret built at runtime so no literal token lives in source (same as the hook test).
+printf 'API = "%s"\n' "ghp_$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 36)" > "$JT/target/cfg.py"
+cat > "$JT/combined.json" <<'JSON'
+{"findings": [
+ {"tools": ["semgrep"], "ruleId": "python.lang.security.audit.subprocess-shell-true", "file": "app.py", "line": 21, "message": "subprocess call with shell=True", "fingerprint": "sast1"},
+ {"tools": ["gitleaks"], "ruleId": "generic-api-key", "file": "app.py", "line": 5, "message": "Generic API Key", "fingerprint": "sec1"},
+ {"tools": ["trivy"], "ruleId": "CVE-2024-0001", "file": "requirements.txt", "line": 1, "message": "CVE-2024-0001 in requests", "fingerprint": "sca1"},
+ {"tools": ["semgrep"], "ruleId": "x", "file": "../../etc/passwd", "line": 1, "message": "traversal", "fingerprint": "trav1"}
+]}
+JSON
+JO="$(python3 "$JA" triage "$JT/combined.json" --target "$JT/target")"
+echo "$JO" | python3 -c 'import json,sys;d=json.load(sys.stdin);r={x["id"] for x in d["results"]};s={x["id"]:x["reason"] for x in d["skipped_ids"]}
+assert d["mode"]=="dry_run" and d["sent"]==0, d
+assert r=={"sast1"}, r
+assert s=={"sec1":"secret_finding_never_sent","sca1":"sca_finding_not_code_judgeable","trav1":"location_unreadable"}, s
+assert ">>    21" in d["results"][0]["would_send"]["state"]["snippet"]' \
+  && ok "triage dry run: sends nothing, skips secret/SCA/traversal, marks the flagged line" \
+  || no "triage dry run guarantees broken"
+
+cat > "$JT/claims.json" <<'JSON'
+[{"id": "ok", "claim": "subprocess is called with shell=True", "file": "app.py", "line": 21},
+ {"id": "pastEOF", "claim": "x", "file": "app.py", "line": 99999},
+ {"id": "escape", "claim": "x", "file": "../combined.json", "line": 1},
+ {"id": "missing", "claim": "x", "file": "nope.py", "line": 1}]
+JSON
+VO="$(python3 "$JA" verify "$JT/claims.json" --target "$JT/target")"
+echo "$VO" | python3 -c 'import json,sys;d=json.load(sys.stdin)
+inv={x["id"] for x in d["results"] if x.get("verdict")=="invalid_location"}
+assert inv=={"pastEOF","escape","missing"}, inv
+assert [x["id"] for x in d["results"] if "would_send" in x]==["ok"]' \
+  && ok "verify: fabricated/escaping locations are invalid_location without an API call" \
+  || no "verify location checks broken"
+
+# Fail closed: --send with gitleaks off PATH must send nothing.
+NOGL="$(mktemp -d)"; ln -s "$(command -v python3)" "$NOGL/python3"
+FO="$(PATH="$NOGL" TYPESAFE_API_KEY=dummy python3 "$JA" triage "$JT/combined.json" --target "$JT/target" --send)"
+echo "$FO" | grep -q '"gitleaks_unavailable_fail_closed": 1' && echo "$FO" | grep -q '"sent": 0' \
+  && ok "--send without gitleaks fails closed (nothing sent)" \
+  || no "--send without gitleaks did not fail closed"
+rm -rf "$NOGL"
+
+# A payload containing a secret is dropped by the gitleaks gate before any network call.
+if have gitleaks; then
+  printf '{"findings":[{"tools":["semgrep"],"ruleId":"hardcoded-url","file":"cfg.py","line":1,"message":"url","fingerprint":"leak1"}]}' > "$JT/leak.json"
+  LO="$(TYPESAFE_API_KEY=dummy python3 "$JA" triage "$JT/leak.json" --target "$JT/target" --send)"
+  echo "$LO" | grep -q '"payload_contains_secret": 1' && echo "$LO" | grep -q '"sent": 0' \
+    && ok "--send drops a payload gitleaks flags" \
+    || no "secret-bearing payload was not dropped"
+  # Harder shapes: a quoted generic assignment and a PEM block (JSON-escaping would hide both).
+  R32="$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 32)"
+  printf 'def connect():\n    db_password = "%s"\n    return db_password\n' "$R32" > "$JT/target/db.py"
+  { echo 'KEY = """'; echo "-----BEGIN RSA PRIVATE ""KEY-----"
+    for _ in 1 2 3 4 5 6; do LC_ALL=C tr -dc 'A-Za-z0-9+/' < /dev/urandom | head -c 64; echo; done
+    echo "-----END RSA PRIVATE ""KEY-----"; echo '"""'; } > "$JT/target/pem.py"
+  printf '{"findings":[{"tools":["semgrep"],"ruleId":"r1","file":"db.py","line":2,"message":"m","fingerprint":"pw"},{"tools":["semgrep"],"ruleId":"r2","file":"pem.py","line":3,"message":"m","fingerprint":"pem"}]}' > "$JT/hard.json"
+  HO="$(TYPESAFE_API_KEY=dummy JEV_API_URL=http://127.0.0.1:9/ python3 "$JA" triage "$JT/hard.json" --target "$JT/target" --send)"
+  echo "$HO" | grep -q '"payload_contains_secret": 2' && echo "$HO" | grep -q '"sent": 0' \
+    && ok "--send drops quoted-assignment and PEM secrets" \
+    || no "quoted/PEM secret slipped past the gitleaks gate: $(echo "$HO" | grep -A3 '"skipped"')"
+
+  # One failing request (closed loopback port) is recorded per item; the run still finishes.
+  EO="$(TYPESAFE_API_KEY=dummy JEV_API_URL=http://127.0.0.1:9/ python3 "$JA" triage "$JT/combined.json" --target "$JT/target" --send --out "$JT/err.json" 2>&1)"
+  python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));assert d["sent"]==1 and "error" in d["results"][0], d' "$JT/err.json" \
+    && ok "network failure is recorded per finding; output still written" \
+    || no "network failure aborted the run: $EO"
+else
+  skip "gitleaks not installed — payload secret gate"
+fi
+
+# Real-scan path shapes: target dir with a space, SARIF uris percent-encoded / cwd-relative,
+# and agent locations given as line ranges.
+SP="$JT/My Repo"; mkdir -p "$SP" && cp "$FIX/vuln_sample.py" "$SP/app.py"
+ENC="$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$SP/app.py")"
+printf '{"findings":[{"tools":["semgrep"],"ruleId":"a","file":"file://%s","line":21,"message":"m","fingerprint":"enc"},{"tools":["semgrep"],"ruleId":"b","file":"My Repo/app.py","line":21,"message":"m","fingerprint":"cwdrel"}]}' "$ENC" > "$JT/paths.json"
+PO="$(cd "$JT" && python3 "$JA" triage paths.json --target "$SP")"
+echo "$PO" | python3 -c 'import json,sys;d=json.load(sys.stdin);assert sorted(x["id"] for x in d["results"])==["cwdrel","enc"], d["skipped_ids"]' \
+  && ok "percent-encoded and cwd-relative SARIF paths resolve inside a target with a space" \
+  || no "real-scan path shapes come back location_unreadable"
+printf '[{"id":"range","claim":"c","file":"app.py","line":"20-22"},{"id":"endash","claim":"c","file":"app.py","line":"20–22"}]' > "$JT/range.json"
+RO="$(python3 "$JA" verify "$JT/range.json" --target "$SP")"
+echo "$RO" | grep -q invalid_location && no "line ranges misread as invalid_location" || ok "line ranges (12-18, 12–18) use their first line"
+printf '[{"verdict":"rejected","fingerprint":"r","trace":[{"file":"app.py","line":21,"description":"d"}]},{"verdict":"confirmed","fingerprint":"c","trace":[{"file":"app.py","line":21,"description":"d"}]}]' > "$JT/findings.json"
+FO2="$(python3 "$JA" verify "$JT/findings.json" --findings --target "$SP")"
+echo "$FO2" | python3 -c 'import json,sys;d=json.load(sys.stdin);assert [x["id"] for x in d["results"]]==["c#trace[0]"], d' \
+  && ok "verify --findings sends confirmed records only by default" \
+  || no "verify --findings included non-confirmed records"
+
+# Live smoke test only on explicit opt-in (costs API calls, sends fixture code to TypeSafe).
+if [ "${JEV_LIVE:-0}" = 1 ]; then
+  LV="$(python3 "$JA" triage "$JT/combined.json" --target "$JT/target" --send)"
+  echo "$LV" | python3 -c 'import json,sys;d=json.load(sys.stdin);assert d["sent"]==1 and "jev_assessment" in d["results"][0], d' \
+    && ok "live triage returned a typed assessment" || no "live triage failed: $LV"
+else
+  skip "JEV_LIVE=1 not set — live Jev smoke test"
+fi
+rm -rf "$JT"
+
 echo "== deep-audit skill (vendored Cloudflare security-audit) =="
 DEEP="$HERE/../.claude/skills/deep-audit"
 grep -q '^name: deep-audit$' "$DEEP/SKILL.md" \

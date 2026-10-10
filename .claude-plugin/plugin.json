@@ -3,7 +3,7 @@
   "name": "claude-code-security-plugins",
   "displayName": "Claude Code Security Plugins",
   "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan, mcp-exfil-scan, skillspector) and comprehensive static security review agent for Claude Code · OWASP APTS-aligned (Auditability, Manipulation Resistance, Reporting, Scope Enforcement). Ships a deep-audit manual audit skill (vendored Cloudflare security-audit methodology), PreToolUse secret-scan + catastrophic-command guard hooks, and a /security-scan command.",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "author": {
     "name": "mp3wizard"
   },

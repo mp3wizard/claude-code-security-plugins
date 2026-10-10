@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.11.0] - 2026-10-10
+
+### Added
+
+- **`jev-annotate.py`** (bundled, stdlib-only, OPT-IN) — TypeSafe Jev typed judgments as an annotation layer:
+  - `triage` (scanner step 5a-jev): Choice per SAST/skill finding on its ±15-line snippet — `real_issue` / `test_or_fixture` / `documentation_or_prose` / `benign_usage`.
+  - `scope` (`/full-audit` step 3): Score ranks the agent's Section D areas for deep-audit priority; reorders only.
+  - `verify` (`/full-audit` steps 2 and 4): checks agent findings and deep-audit `trace`/`evidence` items against the cited source; code-only `invalid_location` catches missing files, paths escaping the target, and lines past EOF with no API call.
+- Privacy guarantees, each covered by an offline test: dry run unless `--send`; secrets and SCA findings never sent; every payload gitleaks-scanned and dropped if flagged; no gitleaks means nothing is sent; `--max` cap (default 50) with skipped counts reported.
+- `/full-audit` asks all network/LLM opt-ins (mcp-scan, skillspector LLM, Jev) once, up front, and passes them to the agent.
+- `/full-audit` always runs the free, offline location check on the agent's findings (catches fabricated `file:line`), and resolves the bundled script from the newest installed plugin version.
+- `verify --findings` sends confirmed records only (`--all-verdicts` to include the rest); line ranges like `12-18` use their first line; SARIF uris that are percent-encoded or cwd-relative resolve correctly (targets with spaces); one failed request is recorded per item instead of aborting the run.
+- Live smoke test behind `JEV_LIVE=1`.
+
+### Notes
+
+- Jev output never drops a finding, changes severity, or feeds `aggregate-findings.py --fail-on`. Scanned content can steer a model, so it stays a column.
+- `verify` on deep-audit runs after its independent verifiers, on final records. It is not inserted inside deep-audit's phases, so the vendored skill stays byte-identical to upstream.
+- Smoke run (17 calls): skillspector false positives on `deep-audit` prose were all labelled `documentation_or_prose`; a true and a negated claim came back `verified` / `contradicted`; a fabricated line was `invalid_location`. Not a calibration — the sample is small and confounded (all FPs were Markdown).
+- skillspector "Credential Access" findings are skipped (`secret_finding_never_sent`) by the conservative secret filter even when they are prose.
+
 ## [1.10.0] - 2026-10-10
 
 ### Added
