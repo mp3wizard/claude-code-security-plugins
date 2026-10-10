@@ -11,6 +11,7 @@ This material is a part of a 15-minute short talk at [Claude Code Thailand Meetu
 | Component | Type | Description |
 |-----------|------|-------------|
 | `security-scanner` | Skill | Orchestrates Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, CodeQL (GitHub repos), mcps-audit (MCP projects), OSV-Scanner (SCA), mcp-scan (opt-in MCP security), security-audit (Claude config + **rule-file injection / hidden-Unicode** audit), skill-security-auditor (skill/MCP deep analysis), mcp-exfil-scan (MCP data exfiltration detection), and skillspector (NVIDIA AI-skill scanner) to produce a structured scan report |
+| `deep-audit` | Skill | Manual, source-first audit methodology vendored from [cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill) (MIT): isolated LLM hunters → adversarial verifiers → coverage ledger → schema-validated `findings.json` + report. Targets what tools miss (business logic, IDOR, trust boundaries). Requires Node.js for its validators |
 | `security-analysis` | Agent | Senior AppSec engineer that runs the scanner, then performs deep manual review across 12 vulnerability categories |
 | `/security-scan` | Command | Explicit slash-command entry point that runs the `security-scanner` skill against a path (defaults to cwd) |
 | secret-scan hook | Hook (PreToolUse) | Runs Gitleaks on pending `Write`/`Edit`/`MultiEdit` content and **blocks** the write if a hardcoded secret is detected. Fails open. Toggle: `secret_scan` |
@@ -89,6 +90,10 @@ claude-code-security-plugins/
 │   │   │   ├── aggregate-findings.py # SARIF merge + dedup + CI gate (bundled)
 │   │   │   └── SHA256SUMS            # integrity manifest, verified at pre-flight
 │   │   └── reports/
+│   ├── skills/deep-audit/          # vendored Cloudflare security-audit (MIT)
+│   │   ├── SKILL.md, *.md            # six-phase methodology + attack-class playbooks
+│   │   ├── validate-*.cjs            # findings / coverage-ledger validators (Node)
+│   │   ├── SHA256SUMS, LICENSE, UPSTREAM.md
 ├── agents/security-analysis.md
 ├── hooks/
 │   ├── hooks.json
@@ -196,6 +201,18 @@ The `security-analysis` agent will automatically:
 3. Analyze 12 vulnerability categories with manual review (Phase 2)
 4. Document findings with structured fields (Phase 3)
 5. Produce a dual-audience report with executive summary and engineering findings (Phase 4)
+
+### Run a deep manual audit (`deep-audit`)
+
+For what scanners cannot see — business logic, IDOR, authorization, trust boundaries — ask for a full audit:
+
+```
+"Do a full deep-audit of this codebase, output to ~/audits/my-project"
+```
+
+The six-phase workflow (recon → coverage-led hunting → adversarial validation → `findings.json` → independent verification → report) spawns many subagents, so it costs far more tokens than a scan; use the `quick` profile or a scoped run for a first pass. Plain security questions use its lighter guidance mode. It never runs target code without an OS-enforced, network-less sandbox. Output defaults to `~/security-audit-skill/<repo>/run-<N>`, outside the repo. Upstream provenance and local changes: `.claude/skills/deep-audit/UPSTREAM.md`.
+
+> **Self-scan note:** running `security-scanner`/skillspector against this repo reports CRITICAL on `deep-audit` — false positives from attack-class prose and `/etc/passwd` path-rejection fixtures in the upstream `*.test.cjs` (dev-only; excluded from the plugin ZIP).
 
 ### Direct agent invocation
 
@@ -369,4 +386,4 @@ SKILL.md added OSV-Scanner, mcp-scan, Semgrep `p/typescript` + `p/secrets`, and 
 
 ## License
 
-MIT
+MIT. `.claude/skills/deep-audit/` is Copyright (c) 2025-2026 Cloudflare, Inc., MIT — see its `LICENSE`.

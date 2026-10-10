@@ -217,6 +217,7 @@ Correlate config-audit, skill-audit, mcp-exfil-scan, skillspector when multiple 
 
 ## Coverage Gaps
 Not covered: business logic, IDOR, runtime behavior, skipped-tool gaps.
+For business logic / IDOR / authorization gaps, recommend a follow-up manual audit with the bundled `deep-audit` skill.
 Bundled scripts failed → "Claude config/skill/MCP exfil audit incomplete — check scripts."
 
 ### APTS Audit Log
@@ -225,6 +226,7 @@ Bundled scripts failed → "Claude config/skill/MCP exfil audit incomplete — c
 
 ## Optional complements & roadmap
 
+- **Manual deep audit (`deep-audit` skill, bundled):** Cloudflare's source-first audit methodology (MIT, vendored — see `.claude/skills/deep-audit/UPSTREAM.md`). Isolated LLM hunters + adversarial verifiers + coverage ledger → validated `findings.json`. Covers what tools miss (business logic, IDOR, trust boundaries). Not part of the Step 4 tool flow — run it separately after this scan.
 - **SBOM (software bill of materials):** Trivy can emit a CycloneDX SBOM for the target — `trivy fs --format cyclonedx --output sbom.cdx.json <path>`. This is a *software* SBOM (dependencies), useful for SCA/provenance. A true **AI-BOM** (model + dataset provenance, OWASP AIBOM / CycloneDX 1.7 ML-BOM) is **not** produced by Trivy and is not yet covered here — roadmap item; do not relabel the software SBOM as an AI-BOM.
 - **Runtime prompt-injection scanning (Sunglasses):** [Sunglasses](https://sunglasses.dev) (`pip install sunglasses`) is a runtime library (`engine.scan(text)`, ~1k patterns for prompt injection / MCP tool poisoning / cred exfil). It scans *live* text before a model/tool call, so it is **not** a static path scanner and is intentionally **not** part of the Step 4 static flow. It belongs at the hook layer (scan tool output/prompts) — an optional complement to skillspector + mcp-exfil-scan, not a replacement.
 

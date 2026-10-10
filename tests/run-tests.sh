@@ -180,6 +180,25 @@ echo "$EX_OUT2" | grep -q 'Skill files found: 1' \
   || no "mcp-exfil-scan lost skill-file discovery"
 rm -rf "$EXFIL_TMP"
 
+echo "== deep-audit skill (vendored Cloudflare security-audit) =="
+DEEP="$HERE/../.claude/skills/deep-audit"
+grep -q '^name: deep-audit$' "$DEEP/SKILL.md" \
+  && ok "deep-audit frontmatter name matches its directory" \
+  || no "deep-audit SKILL.md name does not match directory"
+grep -q '"./.claude/skills/deep-audit"' "$HERE/../.claude-plugin/plugin.json" \
+  && ok "deep-audit registered in plugin.json" \
+  || no "deep-audit missing from plugin.json skills"
+( cd "$DEEP" && { shasum -a 256 -c SHA256SUMS || sha256sum -c SHA256SUMS; } ) >/dev/null 2>&1 \
+  && ok "deep-audit validator checksums match SHA256SUMS" \
+  || no "deep-audit SHA256SUMS mismatch — rerun build-dist.sh or inspect the change"
+if have node; then
+  for t in "$DEEP"/*.test.cjs; do
+    node "$t" >/dev/null 2>&1 && ok "upstream $(basename "$t") passes" || no "upstream $(basename "$t") failed"
+  done
+else
+  skip "node not installed — deep-audit validator tests"
+fi
+
 echo
 echo "==================== RESULT ===================="
 echo "PASS=$PASS  FAIL=$FAIL  SKIP=$SKIP"

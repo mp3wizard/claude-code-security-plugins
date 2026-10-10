@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "claude-code-security-plugins",
   "displayName": "Claude Code Security Plugins",
-  "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan, mcp-exfil-scan, skillspector) and comprehensive static security review agent for Claude Code · OWASP APTS-aligned (Auditability, Manipulation Resistance, Reporting, Scope Enforcement). Ships PreToolUse secret-scan + catastrophic-command guard hooks and a /security-scan command.",
-  "version": "1.8.0",
+  "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan, mcp-exfil-scan, skillspector) and comprehensive static security review agent for Claude Code · OWASP APTS-aligned (Auditability, Manipulation Resistance, Reporting, Scope Enforcement). Ships a deep-audit manual audit skill (vendored Cloudflare security-audit methodology), PreToolUse secret-scan + catastrophic-command guard hooks, and a /security-scan command.",
+  "version": "1.9.0",
   "author": {
     "name": "mp3wizard"
   },
@@ -12,7 +12,7 @@
   "license": "MIT",
   "keywords": ["security", "sast", "vulnerability", "scanning", "appsec", "owasp", "owasp-apts", "secrets", "gitleaks", "trivy", "sca", "osv", "mcp-scan", "mcp-exfiltration", "data-exfiltration", "skillspector", "ai-skill-security", "dependency", "pretooluse-hook", "secret-blocker"],
   "defaultEnabled": false,
-  "skills": ["./.claude/skills/security-scanner"],
+  "skills": ["./.claude/skills/security-scanner", "./.claude/skills/deep-audit"],
   "userConfig": {
     "secret_scan": {
       "type": "boolean",

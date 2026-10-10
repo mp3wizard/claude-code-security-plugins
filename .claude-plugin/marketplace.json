@@ -1,8 +1,8 @@
 {
   "name": "claude-code-security-plugins",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "metadata": {
-    "description": "Automated security scanning and comprehensive static security review for Claude Code. Combines 13 tools (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan, security-audit, skill-security-auditor, mcp-exfil-scan, skillspector) with a senior AppSec agent, PreToolUse secret-scan + command-guard hooks, and a /security-scan command."
+    "description": "Automated security scanning and comprehensive static security review for Claude Code. Combines 13 tools (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan, security-audit, skill-security-auditor, mcp-exfil-scan, skillspector) with a senior AppSec agent, a deep-audit manual audit skill (Cloudflare methodology), PreToolUse secret-scan + command-guard hooks, and a /security-scan command."
   },
   "owner": {
     "name": "mp3wizard"
@@ -11,7 +11,7 @@
     {
       "name": "claude-code-security-plugins",
       "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, CodeQL, mcps-audit, OSV-Scanner, mcp-scan, mcp-exfil-scan, skillspector), a static security review agent, and PreToolUse secret-scan + catastrophic-command guard hooks for Claude Code",
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": { "name": "mp3wizard" },
       "source": "./",
       "category": "security",

@@ -3,7 +3,7 @@
 #
 # Produces:
 #   security-scanner.skill            (skill-only: SKILL.md + bundled scripts)
-#   claude-code-security-plugins.zip  (full plugin: skill + agent + manifests)
+#   claude-code-security-plugins.zip  (full plugin: skills + agent + hooks + manifests)
 #
 # Guarantees the artifacts never drift from source again (the v1.4–1.6 bug where
 # the shipped .skill lagged the repo). Regenerates SHA256SUMS first, and NEVER
@@ -15,6 +15,12 @@ cd "$ROOT"
 SKILL_SRC=".claude/skills/security-scanner"
 SCRIPTS="$SKILL_SRC/scripts"
 BUNDLED="config-audit.py skill-audit.sh mcp-exfil-scan.sh apts-audit.sh aggregate-findings.py"
+
+DEEP_SRC=".claude/skills/deep-audit"
+DEEP_SUMMED="validate-findings.cjs validate-coverage-ledger.cjs report-schema.json"
+
+echo "==> Regenerating $DEEP_SRC/SHA256SUMS"
+( cd "$DEEP_SRC" && { command -v shasum >/dev/null && shasum -a 256 $DEEP_SUMMED || sha256sum $DEEP_SUMMED; } > SHA256SUMS )
 
 echo "==> Regenerating $SCRIPTS/SHA256SUMS"
 ( cd "$SCRIPTS" && { command -v shasum >/dev/null && shasum -a 256 $BUNDLED || sha256sum $BUNDLED; } > SHA256SUMS )
@@ -44,6 +50,10 @@ for f in $BUNDLED SHA256SUMS; do cp "$SCRIPTS/$f" "$PLSK/scripts/$f"; done
 # Agent lives at the canonical root agents/ dir — the explicit `agents` manifest
 # field does not register in current Claude Code; default discovery does.
 cp agents/security-analysis.md "$PL/agents/"
+# deep-audit skill (vendored Cloudflare security-audit). *.test.cjs are dev-only
+# upstream tests (their /etc/passwd fixtures trip skillspector) — not shipped.
+mkdir -p "$PL/.claude/skills/deep-audit"
+( cd "$DEEP_SRC" && for f in *; do case "$f" in *.test.cjs) ;; *) cp "$f" "$PL/.claude/skills/deep-audit/$f" ;; esac; done )
 cp .claude-plugin/plugin.json .claude-plugin/marketplace.json "$PL/.claude-plugin/"
 # Guardrail hooks + slash command (v1.8.0+). Ship executable.
 mkdir -p "$PL/hooks" "$PL/commands"
