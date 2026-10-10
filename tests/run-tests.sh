@@ -191,6 +191,12 @@ grep -q '"./.claude/skills/deep-audit"' "$HERE/../.claude-plugin/plugin.json" \
 ( cd "$DEEP" && { shasum -a 256 -c SHA256SUMS || sha256sum -c SHA256SUMS; } ) >/dev/null 2>&1 \
   && ok "deep-audit validator checksums match SHA256SUMS" \
   || no "deep-audit SHA256SUMS mismatch — rerun build-dist.sh or inspect the change"
+grep -q -- '- deep-audit' "$HERE/../agents/security-analysis.md" && grep -q 'Recommended deep-audit:' "$HERE/../agents/security-analysis.md" \
+  && ok "security-analysis agent preloads deep-audit and emits the recommendation line" \
+  || no "security-analysis agent not wired to deep-audit"
+grep -q 'Recommended deep-audit:' "$HERE/../commands/full-audit.md" && grep -q 'deep-audit' "$HERE/../commands/full-audit.md" \
+  && ok "/full-audit reads the agent's recommendation line" \
+  || no "/full-audit missing or out of sync with the agent"
 if have node; then
   for t in "$DEEP"/*.test.cjs; do
     node "$t" >/dev/null 2>&1 && ok "upstream $(basename "$t") passes" || no "upstream $(basename "$t") failed"

@@ -13,6 +13,7 @@ This material is a part of a 15-minute short talk at [Claude Code Thailand Meetu
 | `security-scanner` | Skill | Orchestrates Gitleaks, Bandit, Semgrep, Trivy, TruffleHog, CodeQL (GitHub repos), mcps-audit (MCP projects), OSV-Scanner (SCA), mcp-scan (opt-in MCP security), security-audit (Claude config + **rule-file injection / hidden-Unicode** audit), skill-security-auditor (skill/MCP deep analysis), mcp-exfil-scan (MCP data exfiltration detection), and skillspector (NVIDIA AI-skill scanner) to produce a structured scan report |
 | `deep-audit` | Skill | Manual, source-first audit methodology vendored from [cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill) (MIT): isolated LLM hunters → adversarial verifiers → coverage ledger → schema-validated `findings.json` + report. Targets what tools miss (business logic, IDOR, trust boundaries). Requires Node.js for its validators |
 | `security-analysis` | Agent | Senior AppSec engineer that runs the scanner, then performs deep manual review across 12 vulnerability categories |
+| `/full-audit` | Command | One-shot pipeline: `security-analysis` agent (13-tool scan + manual review) → asks → optional `deep-audit` full run, scoped from the agent's Section D recommendation |
 | `/security-scan` | Command | Explicit slash-command entry point that runs the `security-scanner` skill against a path (defaults to cwd) |
 | secret-scan hook | Hook (PreToolUse) | Runs Gitleaks on pending `Write`/`Edit`/`MultiEdit` content and **blocks** the write if a hardcoded secret is detected. Fails open. Toggle: `secret_scan` |
 | bash-guard hook | Hook (PreToolUse) | Blocks a narrow set of catastrophic Bash commands (`rm -rf /`, `mkfs`, `dd` to a raw device, fork bombs, pipe-to-shell). Fails open. Toggle: `bash_guard` |
@@ -101,7 +102,8 @@ claude-code-security-plugins/
 │   ├── secret-scan-pretooluse.sh   # PreToolUse: block secret-leaking writes
 │   └── bash-guard-pretooluse.sh    # PreToolUse: block catastrophic commands
 ├── commands/
-│   └── security-scan.md            # /security-scan entry point
+│   ├── security-scan.md            # /security-scan entry point
+│   └── full-audit.md               # /full-audit: agent → optional deep-audit
 └── .claude-plugin/
     ├── plugin.json
     └── marketplace.json
@@ -201,6 +203,14 @@ The `security-analysis` agent will automatically:
 3. Analyze 12 vulnerability categories with manual review (Phase 2)
 4. Document findings with structured fields (Phase 3)
 5. Produce a dual-audience report with executive summary and engineering findings (Phase 4)
+
+### Run everything in one go (`/full-audit`)
+
+```
+/claude-code-security-plugins:full-audit [path]
+```
+
+Runs the `security-analysis` agent (which runs the scanner as Phase 0, then the 12-category manual review and a Section D deep-audit recommendation), shows the report, then asks whether to run `deep-audit` with the recommended profile and scope. The agent uses `deep-audit` in guidance mode only — Claude Code subagents cannot spawn subagents, so the full six-phase run always happens in the main session.
 
 ### Run a deep manual audit (`deep-audit`)
 

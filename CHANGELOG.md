@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.0] - 2026-10-10
+
+### Added
+
+- **`/full-audit` command** — one entry point for the whole pipeline: launches the `security-analysis` agent (scanner Phase 0 + manual review), presents its report, asks the user, then runs `deep-audit` in full audit mode with the recommended profile/scope. The full run stays in the main session because Claude Code subagents cannot spawn subagents (deep-audit's hunters/verifiers).
+- **`security-analysis` agent preloads `deep-audit`** — used in guidance mode only during Phase 2 (boundary-and-result rule, severity anchors, domain companion playbooks). New report **Section D — Deep-Audit Recommendation** ends with a machine-readable `Recommended deep-audit: profile=… scope=…` line that `/full-audit` reads.
+- Regression tests for the command file and the agent's `deep-audit` wiring.
+
 ## [1.9.0] - 2026-10-10
 
 ### Added

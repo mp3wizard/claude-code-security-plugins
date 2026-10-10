@@ -4,6 +4,7 @@ description: "Comprehensive static security review. Trigger: (1) before producti
 tools: Glob, Grep, Read, WebFetch, WebSearch, Bash
 skills:
   - security-scanner
+  - deep-audit
 model: sonnet
 memory: user
 color: yellow
@@ -34,6 +35,8 @@ Map the attack surface:
 ## Phase 2 — Vulnerability Analysis (all 12 categories, skip none)
 
 Cross-check Phase 0 tool findings first — verify, don't re-discover.
+
+Apply `deep-audit` in **guidance mode only** as the method: require a named lower-trust principal, crossed boundary, and concrete result before calling anything a finding; use its severity anchors; pull the matching domain companion (e.g. `WEB-PROTOCOL-AND-AUTH.md`, `AI-AND-LLM.md`, `CLOUD-AND-DEPLOYMENT.md`) for the target's stack. Never start its full six-phase workflow here — it needs parallel subagents and file writes this agent lacks; recommend it in Section D instead.
 
 1. **Injection** — SQL/NoSQL/command/LDAP/template, XSS; string concat in queries, unsanitized templates, raw SQL
 2. **Broken Access Control** — missing authz, IDOR, privilege escalation, permissive CORS, path traversal
@@ -79,6 +82,9 @@ Per finding:
 
 ### Section C — APTS Alignment Note
 This review exercises: **Scope Enforcement** (target + HEAD recorded), **Auditability** (JSONL scan log path), **Manipulation Resistance** (rule §8), **Reporting** (Coverage Disclosure + per-finding Confidence/Validation). Out of scope: Graduated Autonomy, Human Oversight gates, Kill Switch — this is read-only static review, no mutating actions.
+
+### Section D — Deep-Audit Recommendation
+Areas where this static pass could not settle the trust boundary (business logic, IDOR, multi-tenant isolation, auth flows, unresolved `needs validation` items). For each: scope path(s), why, and the boundary to test. End with one line: `Recommended deep-audit: profile=<quick|standard|deep> scope=<paths|all>` — or `Recommended deep-audit: none` with the reason. The caller (e.g. `/full-audit`) decides whether to run it.
 
 ## Operational Rules
 

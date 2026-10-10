@@ -1,6 +1,6 @@
 {
   "name": "claude-code-security-plugins",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Automated security scanning (Bandit, Semgrep, Trivy, TruffleHog, Gitleaks, OSV-Scanner, mcp-scan, mcp-exfil-scan, skillspector) with an APTS-aligned structured report. Shares one source tree with the Claude Code plugin.",
   "author": {
     "name": "pisek @ casedone"
