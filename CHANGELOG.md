@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.11.1] - 2026-10-18
+
+### Changed
+
+- skillspector docs synced to upstream v2.13.0: 71 patterns / 17 categories (was 64 / 16); recommended install is now `uv tool install git+https://github.com/NVIDIA/skillspector.git` (`uv tool update skillspector` to upgrade), with source/Docker installs kept as alternatives.
+- Scanner step 4l notes skillspector's `baseline` / `--baseline` flow (with `--no-llm`, so the privacy gate holds) for accepting reviewed findings. Exact-fingerprint baselines are version-bound and must be regenerated after upgrading skillspector.
+
+### Notes
+
+- Verified locally with skillspector v2.13.0: `--no-llm --format sarif` still emits SARIF 2.1.0 that `aggregate-findings.py` parses (fixture: 9 raw, 7 deduped). Exit code 1 on that fixture is upstream's `risk_score > 50` signal, not an error (errors exit 2).
+
 ## [1.11.0] - 2026-10-10
 
 ### Added

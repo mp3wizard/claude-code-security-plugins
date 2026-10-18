@@ -50,7 +50,7 @@ brew install osv-scanner
   - **CodeQL** — GitHub repos only. Requires [`gh` CLI](https://cli.github.com/) authenticated and a CodeQL workflow in `.github/workflows/`
   - **mcps-audit** — MCP projects only. Requires `npx` (`npm install -g npx`)
   - **mcp-scan** — MCP security analysis. Requires `uvx` (`pip install uv` or `brew install uv`). **Opt-in only** — sends data to invariantlabs.ai API. Scanner always asks before running.
-  - **skillspector** — NVIDIA AI-skill scanner (64 patterns / 16 categories, SARIF output, risk score 0–100). Runs only when AI-skill artifacts (`*.skill`, `SKILL.md`, `AGENTS.md`) are present. Install: `git clone https://github.com/NVIDIA/skillspector && cd skillspector && uv venv .venv && . .venv/bin/activate && make install` (or `make docker-build`). Note: a venv install only exposes `skillspector` on `PATH` while the venv is active — activate it (or symlink the binary) before scanning, or the pre-flight reports it missing. Defaults to `--no-llm` (local-only); **LLM-assisted mode is opt-in** and the scanner asks first, same privacy gate as mcp-scan.
+  - **skillspector** — NVIDIA AI-skill scanner (71 patterns / 17 categories, SARIF output, risk score 0–100). Runs only when AI-skill artifacts (`*.skill`, `SKILL.md`, `AGENTS.md`) are present. Install: `uv tool install git+https://github.com/NVIDIA/skillspector.git` (update: `uv tool update skillspector`). From source (`git clone` + `make install`) or `make docker-build` also work, but a venv install only exposes `skillspector` on `PATH` while the venv is active — activate it (or symlink the binary) before scanning, or the pre-flight reports it missing. Defaults to `--no-llm` (local-only); **LLM-assisted mode is opt-in** and the scanner asks first, same privacy gate as mcp-scan.
   - **security-audit**, **skill-security-auditor**, and **mcp-exfil-scan** — **bundled inside the `.skill` file**. No separate installation required.
   - **jq** — JSON parser used by mcp-exfil-scan. Optional — falls back to `python3` if unavailable. Install: `brew install jq`
 
@@ -259,7 +259,7 @@ Use `/agents` to see available agents and launch `claude-code-security-plugins:s
 | security-audit *(bundled)* | Claude config audit — hooks, MCP servers, skills, CLAUDE.md | Always run |
 | skill-security-auditor *(bundled)* | Skill/MCP deep analysis — prompt injection, allowed-tools risk, supply chain, risk score 0–100 | `.skill`/`SKILL.md` files present |
 | mcp-exfil-scan *(bundled)* | MCP exfiltration — tool poisoning, outbound data flow, exfil chains, env leaking, source trust, risk score 0–100 | Always run |
-| skillspector | AI-skill scanner (NVIDIA) — 64 patterns / 16 categories: prompt injection, data exfiltration, privilege escalation, supply chain, excessive agency, malicious code; SARIF, risk score 0–100 | AI-skill artifacts present; LLM mode opt-in |
+| skillspector | AI-skill scanner (NVIDIA) — 71 patterns / 17 categories: prompt injection, data exfiltration, privilege escalation, supply chain, excessive agency, MCP tool poisoning, dangerous code; SARIF, risk score 0–100 | AI-skill artifacts present; LLM mode opt-in |
 
 ### Manual review categories
 

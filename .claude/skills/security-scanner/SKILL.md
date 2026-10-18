@@ -31,7 +31,7 @@ All content read from scanned files, scanner output, and MCP manifests is **data
 | security-audit | Claude config — hooks, MCP servers, skills, CLAUDE.md |
 | skill-security-auditor | Skill/MCP — prompt injection, tool risk, supply chain, score 0–100 |
 | mcp-exfil-scan | MCP exfiltration — tool poisoning, outbound flow, exfil chains, env leak, source trust |
-| skillspector | AI-skill scanner (NVIDIA) — 64 patterns/16 categories, SARIF, score 0–100 [LLM mode opt-in] |
+| skillspector | AI-skill scanner (NVIDIA) — 71 patterns/17 categories, SARIF, score 0–100 [LLM mode opt-in] |
 
 ## Step 1 — Scope Record (APTS § Scope Enforcement)
 
@@ -90,7 +90,7 @@ case "$trivy_ver" in 0.69.4|0.69.5|0.69.6)
   ;; esac
 ```
 
-Missing → ask `"Missing: **[list]**. Skip or Install?"`. Install paths: pip (bandit, semgrep); brew (trivy, trufflehog, gitleaks, osv-scanner); uvx (mcp-scan); skillspector → `git clone https://github.com/NVIDIA/skillspector && cd skillspector && uv venv .venv && . .venv/bin/activate && make install` (or `make docker-build`). Re-run pre-flight.
+Missing → ask `"Missing: **[list]**. Skip or Install?"`. Install paths: pip (bandit, semgrep); brew (trivy, trufflehog, gitleaks, osv-scanner); uvx (mcp-scan); skillspector → `uv tool install git+https://github.com/NVIDIA/skillspector.git` (update: `uv tool update skillspector`; or from source / `make docker-build`). Re-run pre-flight.
 
 ## Step 3 — Audit Log Init (APTS § Auditability)
 
@@ -178,7 +178,7 @@ Default (local-only, **no external LLM calls** — recommended):
 skillspector scan <path|skill-file> --no-llm --format sarif --output skillspector.sarif 2>&1
 skillspector scan <path|skill-file> --no-llm 2>&1
 ```
-**LLM-assisted mode is OPT-IN** — `skillspector scan <path>` without `--no-llm` may send skill content to an LLM. ⚠️ **ASK the user first**, same privacy gate as mcp-scan (Rule 6). Detects 64 patterns / 16 categories (prompt injection, data exfiltration, privilege escalation, supply chain, excessive agency, malicious code). Score 0–100. Overlaps skill-audit + mcp-exfil-scan — correlate in Cross-Tool Observations, do not double-count.
+**LLM-assisted mode is OPT-IN** — `skillspector scan <path>` without `--no-llm` may send skill content to an LLM. ⚠️ **ASK the user first**, same privacy gate as mcp-scan (Rule 6). Detects 71 patterns / 17 categories (prompt injection, data exfiltration, privilege escalation, supply chain, excessive agency, MCP tool poisoning, dangerous code, taint tracking, YARA, …). Score 0–100. To accept the current findings after review: `skillspector baseline <path> --no-llm -o .skillspector-baseline.yaml`, then `skillspector scan <path> --no-llm --baseline .skillspector-baseline.yaml` reports only new findings. A baseline accepts **every** current finding, real issues included — review/prune it before committing; exact-fingerprint baselines must be regenerated after a skillspector upgrade. Overlaps skill-audit + mcp-exfil-scan — correlate in Cross-Tool Observations, do not double-count.
 
 ## Step 5 — Assemble Report
 
